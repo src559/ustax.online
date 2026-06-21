@@ -1,0 +1,3883 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>US Tax - Rate Calculator</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --hdr:    #1B3A5C;
+    --hdr2:   #2E6496;
+    --acc:    #2980B9;
+    --grn:    #1E8449;
+    --grn2:   #27AE60;
+    --orn:    #C0541A;
+    --red:    #C0392B;
+    --gold:   #B7770D;
+    --ltbl:   #EBF5FB;
+    --ltgn:   #EAFAF1;
+    --ltor:   #FEF5E7;
+    --bdr:    #C8D6E5;
+    --bg:     #EFF3F8;
+    --panel:  #FFFFFF;
+    --mut:    #7F8C8D;
+    --drk:    #1C2833;
+    --alt:    #F4F8FC;
+    --wht:    #FFFFFF;
+    --mono:   'Fira Code', monospace;
+  }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg);
+    color: var(--drk);
+    min-height: 100vh;
+    font-size: 14px;
+  }
+
+  /* ── HEADER ── */
+  .app-header {
+    background: var(--hdr);
+    padding: 14px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+  }
+  .app-header h1 { color: #fff; font-size: 17px; font-weight: 700; letter-spacing: -0.3px; }
+  .app-header .hdr-badge {
+    display: flex; align-items: center; gap: 10px;
+  }
+  .app-header .hdr-badge .badge {
+    background: rgba(255,255,255,0.13);
+    border: 1px solid rgba(255,255,255,0.22);
+    color: #D0E8F8;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 4px 11px;
+    border-radius: 20px;
+    letter-spacing: 0.3px;
+  }
+  .app-header .hdr-badge .badge.src {
+    background: rgba(255,255,255,0.08);
+    color: #A8C8EC;
+    font-weight: 600;
+    letter-spacing: 1px;
+  }
+
+  /* ── TABS ── */
+  .tabs-bar {
+    background: var(--hdr);
+    display: flex;
+    padding: 0 12px;
+    border-top: 1px solid rgba(255,255,255,0.1);
+    position: sticky;
+    top: 52px;
+    z-index: 99;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.18);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .tabs-bar::-webkit-scrollbar { display: none; }
+  .tab-btn {
+    background: none;
+    border: none;
+    color: #8EB4D4;
+    padding: 10px 18px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    border-bottom: 3px solid transparent;
+    transition: all .2s;
+    white-space: nowrap;
+  }
+  .tab-btn:hover { color: #fff; background: rgba(255,255,255,0.06); }
+  .tab-btn.active { color: #fff; border-bottom-color: #5DB8F0; }
+
+  /* ── TAB CONTENT ── */
+  .tab-pane { display: none; padding: 16px; }
+  .tab-pane.active { display: block; }
+
+  /* ── CARDS ── */
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--bdr);
+    border-radius: 8px;
+    margin-bottom: 12px;
+    overflow: hidden;
+  }
+  .card-title {
+    padding: 12px 16px 6px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--hdr2);
+    border-bottom: 1px solid var(--bdr);
+    margin-bottom: 12px;
+  }
+  .card-body { padding: 0 16px 14px; }
+
+  /* ── FORM GRID ── */
+  .form-row { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 10px; }
+  .form-group { display: flex; flex-direction: column; gap: 4px; }
+  .form-group label { font-size: 11px; font-weight: 600; color: var(--mut); text-transform: uppercase; letter-spacing: 0.4px; }
+  .form-group input, .form-group select {
+    background: var(--ltbl);
+    border: 1px solid var(--bdr);
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-family: inherit;
+    font-size: 13px;
+    color: var(--drk);
+    transition: border-color .2s, box-shadow .2s;
+    outline: none;
+  }
+  .form-group input:focus, .form-group select:focus {
+    border-color: var(--acc);
+    box-shadow: 0 0 0 3px rgba(41,128,185,0.12);
+  }
+  .form-group input.large {
+    font-family: var(--mono);
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--acc);
+    background: var(--ltbl);
+    width: 140px;
+  }
+  .form-group input.large.green { color: var(--grn); background: var(--ltgn); }
+  .form-group input.large.orange { color: var(--orn); background: var(--ltor); }
+
+  /* ── SEARCHABLE SELECT ── */
+  .custom-select-wrap { position: relative; }
+  .custom-select-wrap select {
+    width: 100%;
+    appearance: none;
+    -webkit-appearance: none;
+    padding-right: 28px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%232980B9' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+  }
+
+  /* ── BENEFIT ROWS ── */
+  .benefit-row {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    padding: 8px 16px;
+    border-bottom: 1px solid #f0f4f8;
+  }
+  .benefit-row:nth-child(odd) { background: var(--alt); }
+  .benefit-row:last-child { border-bottom: none; }
+  .benefit-row input[type="checkbox"] { flex-shrink: 0; margin-right: 10px; }
+  .benefit-row label { font-size: 12px; color: var(--drk); flex: 1; cursor: pointer; min-width: 0; }
+  .benefit-row .note { font-size: 12px; color: var(--mut); white-space: nowrap; width: 160px; flex-shrink: 0; }
+  .benefit-row .note-col { font-size: 12px; color: var(--mut); white-space: nowrap; flex: 0 0 120px; }
+  .benefit-row .basis { font-size: 12px; color: var(--acc); white-space: nowrap; width: 110px; flex-shrink: 0; }
+
+  /* ── CHECKBOX ── */
+  input[type="checkbox"] {
+    width: 16px; height: 16px;
+    accent-color: var(--acc);
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  input[type="radio"] { accent-color: var(--acc); cursor: pointer; }
+
+  /* ── PERDIEM BAR ── */
+  .pd-bar {
+    background: var(--ltbl);
+    border: 1px solid var(--acc);
+    border-radius: 6px;
+    padding: 10px 16px;
+    margin: 8px 16px;
+    display: flex;
+    gap: 28px;
+    flex-wrap: wrap;
+  }
+  .pd-item { display: flex; flex-direction: column; gap: 2px; }
+  .pd-item .pd-label { font-size: 11px; font-weight: 600; color: var(--mut); text-transform: uppercase; }
+  .pd-item .pd-val { font-size: 16px; font-weight: 700; color: var(--acc); font-family: var(--mono); }
+
+  /* ── TAXABLE BASE NOTE ── */
+  .tb-note {
+    background: #EBF5FB;
+    border-left: 3px solid var(--hdr2);
+    padding: 8px 16px;
+    margin: 6px 16px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--hdr2);
+    border-radius: 0 4px 4px 0;
+  }
+
+  /* ── PD OPTIONS ── */
+  .pd-options {
+    padding: 6px 16px 10px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .pd-options label { font-size: 13px; font-weight: 600; color: var(--acc); cursor: pointer; display: flex; align-items: center; gap: 6px; }
+  .pd-options .muted { font-size: 11px; color: var(--mut); }
+
+  /* ── ACTION BUTTONS ── */
+  .action-row { display: flex; gap: 10px; flex-wrap: wrap; padding: 14px 0 8px; }
+  .btn {
+    border: none;
+    border-radius: 7px;
+    padding: 10px 20px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    transition: filter .15s, transform .1s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .btn:hover { filter: brightness(1.08); }
+  .btn:active { transform: scale(0.97); }
+  .btn-primary { background: var(--hdr); color: #fff; font-size: 14px; padding: 11px 28px; }
+  .btn-primary-orn { background: var(--orn); color: #fff; font-size: 14px; padding: 11px 28px; }
+  .btn-green  { background: var(--grn);  color: #fff; }
+  .btn-blue   { background: var(--acc);  color: #fff; }
+  .btn-gold   { background: var(--gold); color: #fff; }
+  .btn-red    { background: var(--red);  color: #fff; }
+  .btn-muted  { background: var(--mut);  color: #fff; }
+  .btn-sm { padding: 6px 12px; font-size: 12px; }
+
+  /* ── RESULTS ── */
+  .result-header {
+    background: var(--hdr2);
+    color: #fff;
+    text-align: center;
+    padding: 12px;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    animation: slideDown .3s ease;
+  }
+  .result-header.orange { background: var(--orn); }
+  @keyframes slideDown { from { opacity:0; transform:translateY(-10px); } to { opacity:1; transform:translateY(0); } }
+
+  .results-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 800px) { .results-grid { grid-template-columns: 1fr; } }
+
+  .result-card { background: var(--panel); border: 1px solid var(--bdr); border-radius: 8px; overflow: hidden; }
+  .result-card-title {
+    padding: 10px 14px 6px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--hdr2);
+    border-bottom: 1px solid var(--bdr);
+    margin-bottom: 4px;
+  }
+
+  .cost-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 14px;
+    font-size: 12px;
+  }
+  .cost-row:nth-child(odd) { background: var(--alt); }
+  .cost-row .cost-label { color: var(--drk); }
+  .cost-row .cost-label.indent { color: var(--mut); padding-left: 14px; font-size: 11px; }
+  .cost-row .cost-val { font-family: var(--mono); font-size: 12px; color: var(--drk); font-weight: 500; }
+  .cost-row .cost-val.acc { color: var(--acc); }
+  .cost-row .cost-val.mut { color: var(--mut); }
+  .cost-row .cost-val.hdr2 { color: var(--hdr2); }
+  .cost-row .cost-val.grn { color: var(--grn); }
+
+  .total-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--ltbl);
+    padding: 10px 14px;
+    margin: 6px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--bdr);
+  }
+  .total-row .t-label { font-size: 13px; font-weight: 700; color: var(--drk); }
+  .total-row .t-val { font-family: var(--mono); font-size: 16px; font-weight: 700; color: var(--red); }
+
+  /* ── BILL RATE BOX — the signature element ── */
+  .bill-box {
+    background: linear-gradient(135deg, var(--grn) 0%, #1a7a40 100%);
+    margin: 10px 8px;
+    border-radius: 10px;
+    padding: 18px 16px 14px;
+    text-align: center;
+    animation: revealBox .4s cubic-bezier(0.34,1.56,0.64,1);
+    box-shadow: 0 4px 20px rgba(30,132,73,0.35);
+  }
+  .bill-box.orange { background: linear-gradient(135deg, var(--orn) 0%, #a84415 100%); box-shadow: 0 4px 20px rgba(192,84,26,0.35); }
+  @keyframes revealBox {
+    from { opacity:0; transform: scale(0.85); }
+    to   { opacity:1; transform: scale(1); }
+  }
+  .bill-box .bb-title { color: rgba(255,255,255,0.85); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+  .bill-box .bb-rate  { color: #fff; font-size: 42px; font-weight: 700; font-family: var(--mono); line-height: 1.1; margin: 4px 0; }
+  .bill-box .bb-sub   { color: rgba(255,255,255,0.8); font-size: 12px; font-weight: 500; }
+
+  .info-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 7px 14px;
+    font-size: 12px;
+    border-bottom: 1px solid #f0f4f8;
+  }
+  .info-row:last-child { border-bottom: none; }
+  .info-row .ir-label { color: var(--mut); }
+  .info-row .ir-val   { font-family: var(--mono); font-weight: 600; }
+  .info-row .ir-val.grn  { color: var(--grn); }
+  .info-row .ir-val.red  { color: var(--red); }
+  .info-row .ir-val.orn  { color: var(--orn); }
+  .info-row .ir-val.acc  { color: var(--acc); }
+  .info-row .ir-val.drk  { color: var(--drk); }
+
+  .pd-detail-box {
+    background: var(--ltbl);
+    border: 1px solid var(--acc);
+    border-radius: 6px;
+    padding: 8px 14px;
+    margin: 6px 8px;
+    font-size: 11px;
+    color: var(--drk);
+  }
+  .pd-detail-box strong { color: var(--hdr2); display: block; margin-bottom: 2px; font-size: 12px; }
+
+  /* ── 1099 INFO BOX ── */
+  .info-box {
+    background: var(--ltor);
+    border: 1px solid var(--orn);
+    border-radius: 6px;
+    padding: 10px 14px;
+    margin: 8px 0;
+  }
+  .info-box .info-item { font-size: 12px; color: var(--drk); padding: 2px 0; }
+  .info-box .info-item::before { content: "✓ "; color: var(--grn); font-weight: 700; }
+
+  /* ── PER DIEM MANAGER ── */
+  .pd-manager { padding: 16px; }
+  .pd-manager-header {
+    background: var(--hdr);
+    color: #fff;
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin-bottom: 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .pd-manager-header h2 { font-size: 15px; font-weight: 700; }
+  .pd-manager-header .sub { font-size: 11px; color: #A8C8EC; }
+
+  .pd-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+  @media (max-width: 700px) { .pd-controls { grid-template-columns: 1fr; } }
+
+  .pd-table-wrap {
+    border: 1px solid var(--bdr);
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--panel);
+  }
+  #pd-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  #pd-table thead th {
+    background: var(--hdr2);
+    color: #fff;
+    padding: 9px 10px;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.4px;
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+  }
+  #pd-table thead th:hover { background: var(--hdr); }
+  #pd-table tbody tr { border-bottom: 1px solid #edf2f7; cursor: pointer; transition: background .1s; }
+  #pd-table tbody tr:nth-child(even) { background: var(--alt); }
+  #pd-table tbody tr:hover { background: var(--ltbl); }
+  #pd-table tbody tr.selected { background: #DBEEFF; }
+  #pd-table td { padding: 7px 10px; }
+  .pd-status { font-size: 12px; font-weight: 600; color: var(--grn); padding: 6px 0; }
+
+  /* ── PD PCT PRESETS ── */
+  .pd-pct-preset {
+    background: var(--ltbl); border: 1px solid var(--bdr); border-radius: 20px;
+    padding: 5px 14px; font-family: inherit; font-size: 12px; font-weight: 600;
+    color: var(--drk); cursor: pointer; transition: all .15s;
+  }
+  .pd-pct-preset:hover { background: var(--acc); color: #fff; border-color: var(--acc); }
+  .pd-pct-preset.active { background: var(--acc); color: #fff; border-color: var(--acc); }
+
+  /* ── GSA API UPDATE PANEL ── */
+  .gsa-update-bar {
+    background: linear-gradient(135deg, #1B3A5C 0%, #2E6496 100%);
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .gsa-update-bar .gsa-bar-left {
+    display: flex; align-items: center; gap: 10px; flex: 1; min-width: 200px;
+  }
+  .gsa-update-bar .gsa-title {
+    color: #fff; font-size: 13px; font-weight: 700;
+  }
+  .gsa-update-bar .gsa-subtitle {
+    color: #A8C8EC; font-size: 11px; margin-top: 1px;
+  }
+  .gsa-api-panel {
+    background: #fff;
+    border: 1px solid var(--bdr);
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-bottom: 12px;
+    display: none;
+  }
+  .gsa-api-panel.open { display: block; }
+  .gsa-api-panel .api-row {
+    display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap;
+  }
+  .gsa-api-panel .api-info {
+    font-size: 11px; color: var(--mut); margin-bottom: 10px; line-height: 1.5;
+  }
+  .gsa-api-panel .api-info a { color: var(--acc); text-decoration: none; }
+  .gsa-api-panel .api-info a:hover { text-decoration: underline; }
+  .gsa-api-key-wrap {
+    flex: 1; min-width: 220px;
+  }
+  .gsa-api-key-wrap label {
+    font-size: 11px; font-weight: 600; color: var(--mut); text-transform: uppercase; letter-spacing: 0.4px; display: block; margin-bottom: 4px;
+  }
+  .gsa-api-key-wrap input {
+    width: 100%; background: var(--ltbl); border: 1px solid var(--bdr);
+    border-radius: 6px; padding: 8px 10px; font-family: var(--mono); font-size: 12px;
+    color: var(--drk); outline: none; transition: border-color .2s;
+  }
+  .gsa-api-key-wrap input:focus { border-color: var(--acc); box-shadow: 0 0 0 3px rgba(41,128,185,0.12); }
+  .gsa-year-wrap { min-width: 100px; }
+  .gsa-year-wrap label {
+    font-size: 11px; font-weight: 600; color: var(--mut); text-transform: uppercase; letter-spacing: 0.4px; display: block; margin-bottom: 4px;
+  }
+  .gsa-year-wrap select {
+    background: var(--ltbl); border: 1px solid var(--bdr); border-radius: 6px;
+    padding: 8px 10px; font-family: inherit; font-size: 13px; outline: none;
+    cursor: pointer;
+  }
+  .gsa-progress {
+    margin-top: 10px; font-size: 12px; color: var(--acc); font-weight: 600;
+    display: none; align-items: center; gap: 8px;
+  }
+  .gsa-progress.show { display: flex; }
+  .gsa-spinner {
+    width: 14px; height: 14px; border: 2px solid var(--bdr);
+    border-top-color: var(--acc); border-radius: 50%;
+    animation: spin .7s linear infinite; flex-shrink: 0;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .gsa-result-log {
+    margin-top: 10px; background: #f8fafc; border: 1px solid var(--bdr);
+    border-radius: 6px; padding: 10px; font-size: 11px; font-family: var(--mono);
+    color: var(--drk); max-height: 120px; overflow-y: auto; display: none;
+    line-height: 1.6;
+  }
+  .gsa-result-log.show { display: block; }
+  .gsa-result-log .log-ok  { color: var(--grn); }
+  .gsa-result-log .log-err { color: var(--red); }
+  .gsa-result-log .log-inf { color: var(--acc); }
+  .btn-gsa-update {
+    background: linear-gradient(135deg, #27AE60, #1E8449);
+    color: #fff; border: none; border-radius: 6px; padding: 9px 18px;
+    font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
+    transition: opacity .2s; white-space: nowrap;
+  }
+  .btn-gsa-update:hover { opacity: .88; }
+  .btn-gsa-update:disabled { opacity: .5; cursor: not-allowed; }
+  .gsa-toggle-btn {
+    background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3);
+    color: #fff; border-radius: 6px; padding: 7px 14px;
+    font-family: inherit; font-size: 12px; font-weight: 600; cursor: pointer;
+    transition: background .2s; white-space: nowrap;
+  }
+  .gsa-toggle-btn:hover { background: rgba(255,255,255,0.25); }
+  .gsa-save-key-row {
+    display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 11px; color: var(--mut);
+  }
+
+  /* ── SETTINGS ── */
+  .settings-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 16px;
+    border-bottom: 1px solid #f0f4f8;
+  }
+  .settings-row:nth-child(odd) { background: var(--alt); }
+  .settings-row .s-label { font-size: 13px; font-weight: 600; color: var(--drk); width: 240px; flex-shrink: 0; }
+  .settings-row .s-note  { font-size: 11px; color: var(--mut); flex: 1; }
+  .settings-row input { width: 100px; }
+
+  .radio-group { display: flex; flex-direction: column; gap: 4px; }
+  .radio-group label { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--drk); cursor: pointer; }
+
+  /* ── REFERENCE GUIDE ── */
+  .ref-row { display: flex; align-items: center; gap: 16px; padding: 7px 16px; border-bottom: 1px solid #f0f4f8; }
+  .ref-row:nth-child(odd) { background: var(--alt); }
+  .ref-row .ref-name { font-size: 12px; font-weight: 700; color: var(--drk); width: 180px; flex-shrink: 0; }
+  .ref-row .ref-val  { font-size: 12px; color: var(--mut); }
+
+  /* ── SAVED ── */
+  .saved-header {
+    background: var(--hdr);
+    padding: 12px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-radius: 8px;
+    margin-bottom: 12px;
+  }
+  .saved-header h2 { color: #fff; font-size: 15px; font-weight: 700; }
+
+  #sv-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  #sv-table thead th { background: var(--hdr2); color: #fff; padding: 9px 10px; text-align: left; font-size: 11px; font-weight: 600; white-space: nowrap; }
+  #sv-table tbody tr { border-bottom: 1px solid #edf2f7; transition: background .1s; cursor: pointer; }
+  #sv-table tbody tr:nth-child(even) { background: var(--alt); }
+  #sv-table tbody tr:hover { background: var(--ltbl); }
+  #sv-table td { padding: 7px 10px; }
+
+  .table-wrap { border: 1px solid var(--bdr); border-radius: 8px; overflow-x: auto; background: var(--panel); }
+
+  /* ── TOAST ── */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--hdr);
+    color: #fff;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    z-index: 9999;
+    animation: toastIn .3s ease;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+  }
+  .toast.success { background: var(--grn); }
+  .toast.error   { background: var(--red); }
+  @keyframes toastIn { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+
+  /* ── SPINNER ── */
+  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.4); border-top-color: #fff; border-radius: 50%; animation: spin .6s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── MARGIN NOTE ── */
+  .margin-note { font-size: 11px; color: var(--mut); padding: 0 8px 10px 14px; }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 600px) {
+    .form-row { flex-direction: column; }
+    .results-grid { grid-template-columns: 1fr; }
+    .bill-box .bb-rate { font-size: 30px; }
+  }
+
+  /* ── SCROLLBAR ── */
+  ::-webkit-scrollbar { width: 7px; height: 7px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--bdr); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--hdr2); }
+
+  /* ── STANDARD ROW IN PD TABLE ── */
+  #pd-table tbody tr.standard-row td { background: #FFF8E1 !important; font-weight: 600; }
+  #pd-table tbody tr.standard-row td:first-child { color: var(--gold); }
+
+  /* ── PD USE BUTTON ── */
+  .btn-use-pd {
+    background: var(--grn); color: #fff;
+    border: none; border-radius: 5px;
+    padding: 3px 9px; font-size: 11px; font-weight: 700;
+    cursor: pointer; white-space: nowrap;
+    transition: filter .15s;
+  }
+  .btn-use-pd:hover { filter: brightness(1.1); }
+
+  /* ── SAVED TABLE CHECKBOXES ── */
+  #sv-table thead th:first-child,
+  #sv-table tbody td:first-child { width: 36px; text-align: center; }
+  .sv-sel-bar {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 0 6px; flex-wrap: wrap;
+  }
+  .sv-sel-bar span { font-size: 12px; color: var(--mut); }
+
+  /* ── PDF PRINT STYLES ── */
+  @media print {
+    body { background: #fff !important; }
+    .app-header, .tabs-bar, .action-row,
+    .tab-pane:not(.active), .card:not(.print-include) { display: none !important; }
+    .tab-pane.active { display: block !important; padding: 0 !important; }
+    #w2_results, #c99_results { page-break-inside: avoid; }
+    .bill-box { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .result-header { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .results-grid { grid-template-columns: 1fr 1fr !important; }
+    .print-hide { display: none !important; }
+    .print-pdf-header {
+      display: block !important;
+      margin-bottom: 12px;
+      padding: 10px 0;
+      border-bottom: 2px solid var(--hdr);
+    }
+  }
+  .print-pdf-header { display: none; }
+
+  /* ── CONTRACT PERIOD TOGGLE ── */
+  .period-toggle {
+    display: flex;
+    align-items: center;
+    background: var(--ltbl);
+    border: 1px solid var(--bdr);
+    border-radius: 8px;
+    padding: 3px;
+    gap: 2px;
+    width: fit-content;
+  }
+  .period-toggle button {
+    border: none;
+    border-radius: 6px;
+    padding: 5px 16px;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all .18s;
+    background: transparent;
+    color: var(--mut);
+  }
+  .period-toggle button.active {
+    background: var(--hdr2);
+    color: #fff;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.18);
+  }
+  .period-toggle button:not(.active):hover { background: rgba(41,128,185,0.1); color: var(--acc); }
+
+  /* ── WEEKLY PD SUMMARY BAR ── */
+  .pd-weekly-bar {
+    background: linear-gradient(90deg, #1a4a70 0%, #2E6496 100%);
+    border-radius: 6px;
+    padding: 10px 16px;
+    margin: 8px 16px 4px;
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .pd-weekly-bar .pw-label {
+    color: rgba(255,255,255,0.75);
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .pd-weekly-bar .pw-val {
+    color: #fff;
+    font-family: var(--mono);
+    font-size: 15px;
+    font-weight: 700;
+  }
+  .pd-weekly-bar .pw-item { display: flex; flex-direction: column; gap: 1px; }
+  .pd-weekly-bar .pw-divider { width: 1px; height: 32px; background: rgba(255,255,255,0.2); }
+  .k401-opts { display: flex; gap: 16px; padding: 6px 16px 10px; }
+  .k401-opts label { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--gold); font-weight: 600; cursor: pointer; }
+
+  /* ── EMPLOYER TAX ROW ── */
+  .et-row { display: flex; align-items: center; gap: 10px; padding: 6px 16px 12px; }
+  .et-row label { font-size: 13px; font-weight: 600; color: var(--drk); }
+  .et-row .et-note { font-size: 11px; color: var(--mut); }
+  .et-row input { width: 80px; }
+
+  /* ── SECTION DIVIDER ── */
+  .sec-div { border: none; border-top: 1px solid var(--bdr); margin: 10px 8px 6px; }
+
+  /* ── CUSTOM BENEFITS MANAGER ── */
+  .cb-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .cb-table thead th {
+    background: var(--hdr2); color: #fff;
+    padding: 8px 10px; text-align: left;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.4px;
+    white-space: nowrap;
+  }
+  .cb-table tbody tr { border-bottom: 1px solid #edf2f7; }
+  .cb-table tbody tr:nth-child(even) { background: var(--alt); }
+  .cb-table tbody tr:hover { background: var(--ltbl); }
+  .cb-table td { padding: 6px 10px; vertical-align: middle; }
+  .cb-table td input, .cb-table td select {
+    width: 100%; padding: 4px 6px; font-family: inherit; font-size: 12px;
+    background: var(--ltbl); border: 1px solid var(--bdr); border-radius: 4px;
+  }
+  .cb-add-row {
+    display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end;
+    padding: 10px 16px 12px; background: var(--alt);
+    border-top: 1px solid var(--bdr);
+  }
+  .cb-add-row .cb-field { display: flex; flex-direction: column; gap: 3px; }
+  .cb-add-row .cb-field label { font-size: 10px; font-weight: 700; color: var(--mut); text-transform: uppercase; letter-spacing: 0.4px; }
+  .cb-add-row .cb-field input, .cb-add-row .cb-field select {
+    padding: 6px 8px; font-family: inherit; font-size: 12px;
+    background: #fff; border: 1px solid var(--bdr); border-radius: 5px;
+  }
+  /* ── PD DAYS ── */
+  .pd-days-row { display: flex; align-items: center; gap: 8px; }
+  .pd-days-row input[type="number"] { width: 60px; }
+
+  /* ── BENEFIT NOTE (clickable on/off) ── */
+  .note { cursor: pointer; user-select: none; }
+  .note.off { color: var(--mut); font-style: italic; }
+  .note.off:hover { color: var(--acc); text-decoration: underline; }
+  .note.on { color: var(--acc); font-weight: 600; }
+  .note.on:hover { text-decoration: underline; }
+  .cb-section-label { font-size: 11px; font-weight: 700; color: var(--mut); text-transform: uppercase; letter-spacing: 0.5px; margin: 14px 0 6px; }
+  .cb-add-btn { margin-top: 8px; }
+  .cb-del { background: none; border: none; color: var(--red); cursor: pointer; font-size: 13px; padding: 2px 4px; }
+  .cb-del:hover { text-decoration: underline; }
+
+  /* ── BENEFIT CONFIG MODAL ── */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(15,30,45,0.55);
+    z-index: 1000; align-items: center; justify-content: center; padding: 16px;
+  }
+  .modal-overlay.show { display: flex; }
+  .modal-box {
+    background: #fff; border-radius: 10px; width: 100%; max-width: 420px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.25); overflow: hidden;
+  }
+  .modal-header {
+    background: var(--hdr); color: #fff; padding: 14px 18px; font-weight: 600; font-size: 15px;
+  }
+  .modal-body { padding: 18px; display: flex; flex-direction: column; gap: 12px; }
+  .modal-body label { font-size: 12px; font-weight: 700; color: var(--mut); text-transform: uppercase; letter-spacing: 0.4px; }
+  .modal-body input[type="number"], .modal-body input[type="text"], .modal-body select {
+    width: 100%; padding: 9px 10px; font-family: inherit; font-size: 14px;
+    background: #fff; border: 1px solid var(--bdr); border-radius: 6px;
+  }
+  .modal-radio-group { display: flex; flex-direction: column; gap: 8px; }
+  .modal-radio-group .opt { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+  .modal-radio-custom { display: flex; align-items: center; gap: 8px; }
+  .modal-radio-custom input[type="number"] { width: 90px; }
+  .modal-footer {
+    padding: 12px 18px; display: flex; justify-content: flex-end; gap: 10px;
+    background: var(--bg2); border-top: 1px solid var(--bdr);
+  }
+  .modal-footer button {
+    padding: 8px 16px; border-radius: 6px; border: none; font-weight: 600;
+    font-size: 13px; cursor: pointer;
+  }
+  .modal-btn-cancel { background: #e6e9ec; color: var(--ink); }
+  .modal-btn-save { background: var(--acc); color: #fff; }
+
+  /* ── PD MANAGER TOP GRID ── */
+  .pd-top-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  @media (max-width: 760px) { .pd-top-grid { grid-template-columns: 1fr; } }
+  .gsa-card-lite { display: flex; flex-direction: column; gap: 10px; }
+  .gsa-card-lite .row { display: flex; gap: 10px; align-items: center; }
+  .gsa-card-lite select { flex: 1; padding: 8px 10px; border: 1px solid var(--bdr); border-radius: 6px; font-family: inherit; font-size: 13px; }
+  #gsa_status { font-size: 12px; color: var(--mut); min-height: 16px; }
+  #gsa_status.ok { color: var(--grn); }
+  #gsa_status.err { color: var(--red); }
+
+  /* ── SAVED ROW ACTIONS ── */
+  .sv-actions { display: flex; gap: 6px; align-items: center; }
+  .sv-actions button { padding: 5px 9px; border-radius: 5px; border: 1px solid var(--bdr); background: #fff; cursor: pointer; font-size: 12px; }
+  .sv-actions button:hover { background: var(--bg2); }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="app-header">
+  <h1>🧾 US Tax - Rate Calculator</h1>
+  <div class="hdr-badge">
+    <span class="badge">W2 / 1099</span>
+    <span class="badge src">— SRC —</span>
+  </div>
+</header>
+
+<!-- TABS -->
+<div class="tabs-bar">
+  <button class="tab-btn active" onclick="showTab('br',this)">Pay Rate Analyzer</button>
+  <button class="tab-btn" onclick="showTab('w2',this)">W2 Calculator</button>
+  <button class="tab-btn" onclick="showTab('c99',this)">1099 Calculator</button>
+  <button class="tab-btn" onclick="showTab('pd',this)">Per Diem Manager</button>
+  <button class="tab-btn" onclick="showTab('saved',this)">Saved</button>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- BILL RATE → MARGIN TAB -->
+<!-- ═══════════════════════════════════════════════ -->
+<div id="tab-br" class="tab-pane active">
+
+  <!-- Header bar -->
+  <div style="background:linear-gradient(135deg,var(--hdr) 0%,var(--hdr2) 100%);color:#fff;padding:12px 16px;border-radius:8px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+    <div>
+      <div style="font-size:15px;font-weight:700">Pay Rate Analyzer</div>
+      <div style="font-size:11px;color:#A8C8EC;margin-top:2px">Enter client bill rate + candidate cost details — calculates actual rate from client (after VMS%) and your exact margin</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <span style="font-size:11px;font-weight:700;background:rgba(255,255,255,0.13);border:1px solid rgba(255,255,255,0.22);padding:4px 11px;border-radius:20px;color:#D0E8F8">Actual Rate = Bill Rate − VMS% &nbsp;|&nbsp; Margin = Actual Rate − Total Cost</span>
+    </div>
+  </div>
+
+  <!-- Candidate Info -->
+  <div class="card">
+    <div class="card-title">Candidate &amp; Assignment Details</div>
+    <div class="card-body">
+      <div class="form-row">
+        <div class="form-group" style="flex:1;min-width:180px">
+          <label>Candidate Name</label>
+          <input type="text" id="br_cn" placeholder="Full name">
+        </div>
+        <div class="form-group" style="flex:1;min-width:180px">
+          <label>Job Title / Specialty</label>
+          <input type="text" id="br_jt" placeholder="e.g. RN ICU">
+        </div>
+        <div class="form-group" style="flex:1;min-width:180px">
+          <label>Client / Facility</label>
+          <input type="text" id="br_cl" placeholder="Hospital / clinic name">
+        </div>
+        <div class="form-group" style="min-width:120px">
+          <label>Employment Type</label>
+          <select id="br_type" onchange="brTypeChange()" style="background:var(--ltbl);border:1px solid var(--bdr);border-radius:6px;padding:8px 10px;font-family:inherit;font-size:13px;outline:none">
+            <option value="w2">W2 Employee</option>
+            <option value="c99">1099 Contractor</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ★ Client Bill Rate — the key new input -->
+  <div class="card" style="border:2px solid var(--grn2)">
+    <div class="card-title" style="color:var(--grn);background:var(--ltgn)">Client Bill Rate &amp; VMS Deduction</div>
+    <div class="card-body">
+      <div class="form-row" style="align-items:flex-end;flex-wrap:wrap;gap:16px">
+        <div class="form-group">
+          <label>Client Bill Rate ($/hr)</label>
+          <input type="number" id="br_bill" class="large green" value="75.00" step="0.50" min="0" oninput="brLiveUpdate()">
+        </div>
+        <div class="form-group">
+          <label>VMS Fee %</label>
+          <input type="number" id="br_vms_pct" value="0" step="0.1" min="0" max="30" style="width:90px;background:var(--ltor);border:1px solid var(--bdr);border-radius:6px;padding:8px 10px;font-family:inherit;font-size:13px;color:var(--orn);outline:none" oninput="brLiveUpdate()">
+          <span style="font-size:10px;color:var(--mut);margin-top:3px">VMS/MSP platform fee</span>
+        </div>
+        <div class="form-group">
+          <label>Actual Rate from Client ($/hr)</label>
+          <input type="text" id="br_actual_rate" class="large orange" value="$75.00" readonly style="width:120px;cursor:default">
+          <span style="font-size:10px;color:var(--mut);margin-top:3px">After VMS deduction</span>
+        </div>
+        <div class="form-group">
+          <label>Contract Period</label>
+          <div class="period-toggle" id="br_period_toggle">
+            <button class="active" onclick="brSetPeriod('weeks',this)">Weeks</button>
+            <button onclick="brSetPeriod('months',this)">Months</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label id="br_duration_label">Number of Weeks</label>
+          <input type="number" id="br_wks" value="13" min="1" max="260" style="width:90px" oninput="brLiveUpdate()">
+        </div>
+        <div class="form-group">
+          <label id="br_hrs_label">Hours / Week</label>
+          <input type="number" id="br_hrs" value="40" min="1" max="400" style="width:90px" oninput="brLiveUpdate()">
+        </div>
+        <div class="form-group" style="justify-content:flex-end;padding-bottom:2px">
+          <span id="br_contract_summary" style="font-size:12px;color:var(--grn);font-weight:600;background:var(--ltgn);border:1px solid #aee4c0;border-radius:6px;padding:8px 12px;white-space:nowrap">
+            13 wks × 40 hrs = 520 hrs
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Candidate Pay Rate -->
+  <div class="card">
+    <div class="card-title">Candidate Pay Rate</div>
+    <div class="card-body">
+      <div class="form-row" style="align-items:flex-end;flex-wrap:wrap">
+        <div class="form-group">
+          <label>Pay Rate ($/hr)</label>
+          <input type="number" id="br_pay" class="large" value="50.00" step="0.50" min="0" oninput="brLiveUpdate()">
+        </div>
+        <div class="form-group">
+          <label>Employer Tax %</label>
+          <input type="number" id="br_et" value="12" step="0.1" min="0" max="30" style="width:90px" oninput="brLiveUpdate()">
+          <span style="font-size:10px;color:var(--mut);margin-top:3px">FICA+FUTA+SUTA+WC</span>
+        </div>
+        <!-- Live taxable base note -->
+        <div style="padding-top:18px;flex:1;min-width:200px">
+          <div class="tb-note" id="br_tb_note" style="margin:0">Taxable Base = $50.00/hr</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Location & Per Diem (W2 only) -->
+  <div id="br_pd_section">
+    <div class="card">
+      <div class="card-title">Assignment Location &amp; GSA Per Diem</div>
+      <div style="padding:6px 16px 0;font-size:11px;color:var(--mut)">Select state then city — type to filter</div>
+      <div class="card-body" style="padding-bottom:6px">
+        <div class="form-row">
+          <div class="form-group" style="min-width:220px">
+            <label>State</label>
+            <div class="custom-select-wrap">
+              <select id="br_state" onchange="brStateChange()">
+                <option value="">-- Select State --</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group" style="min-width:240px">
+            <label>City</label>
+            <div class="custom-select-wrap">
+              <select id="br_city" onchange="brCityChangeSync()">
+                <option value="">-- Select City --</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="pd-bar">
+        <div class="pd-item"><span class="pd-label">Lodging/night</span><span class="pd-val" id="br_lo_d">$110</span></div>
+        <div class="pd-item"><span class="pd-label">M&amp;IE/day</span><span class="pd-val" id="br_me_d">$68</span></div>
+        <div class="pd-item"><span class="pd-label">Total/day</span><span class="pd-val" id="br_to_d">$178</span></div>
+        <div class="pd-item" style="border-left:2px solid var(--bdr);padding-left:16px"><span class="pd-label">Weekly Total</span><span class="pd-val" id="br_pw_d" style="color:var(--grn)">--</span></div>
+        <div class="pd-item"><span class="pd-label">Per Diem/hr</span><span class="pd-val" id="br_ph_d">--</span></div>
+      </div>
+      <div class="tb-note" id="br_pd_tb_note" style="margin:6px 16px">Per Diem not yet applied</div>
+      <div class="pd-options">
+        <label>
+          <input type="checkbox" id="br_use_pd" checked onchange="brLiveUpdate()">
+          Include Per Diem
+        </label>
+        <div class="pd-days-row">
+          <span style="font-size:12px;color:var(--mut)">Days/week:</span>
+          <input type="number" id="br_pdd" value="7" min="1" max="7" oninput="brLiveUpdate()">
+        </div>
+        <span class="muted">(W2 tax on taxable base only; PD pass-through non-taxable)</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Benefits (W2 only) -->
+  <div id="br_ben_section">
+    <div class="card">
+      <div class="card-title">Benefits Package <span style="font-size:11px;font-weight:400;color:var(--mut)">(W2 only — included in cost, reduces margin)</span></div>
+      <div style="display:flex;align-items:center;gap:0;padding:4px 16px 6px;font-size:12px;font-weight:700;color:var(--mut);border-bottom:1px solid var(--bdr)">
+        <span style="width:26px;flex-shrink:0"></span>
+        <span style="flex:1">Benefit</span>
+        <span style="width:160px;flex-shrink:0">Amount</span>
+        <span style="width:110px;flex-shrink:0">Basis</span>
+        <span style="flex:0 0 120px">Note</span>
+      </div>
+      <div class="benefit-row">
+        <input type="checkbox" id="br_use_hi" onchange="onBenefitToggle('br','hi',this)">
+        <label for="br_use_hi">Health Insurance</label>
+        <span class="note off" id="br_hi_note" onclick="openBenefitModal('br','hi')">Not included — click to add</span>
+        <span class="basis">Full Pay Rate</span>
+        <span class="note-col">Medical+Dental+Vision</span>
+      </div>
+      <div class="benefit-row">
+        <input type="checkbox" id="br_use_vac" onchange="onBenefitToggle('br','vac',this)">
+        <label for="br_use_vac">Paid Vacation</label>
+        <span class="note off" id="br_vac_note" onclick="openBenefitModal('br','vac')">Not included — click to add</span>
+        <span class="basis">Full Pay Rate</span>
+        <span class="note-col">Days × daily rate</span>
+      </div>
+      <div class="benefit-row">
+        <input type="checkbox" id="br_use_hol" onchange="onBenefitToggle('br','hol',this)">
+        <label for="br_use_hol">Public Holidays</label>
+        <span class="note off" id="br_hol_note" onclick="openBenefitModal('br','hol')">Not included — click to add</span>
+        <span class="basis">Full Pay Rate</span>
+        <span class="note-col">Federal holidays</span>
+      </div>
+      <div class="benefit-row">
+        <input type="checkbox" id="br_use_sick" onchange="onBenefitToggle('br','sick',this)">
+        <label for="br_use_sick">Sick Leave</label>
+        <span class="note off" id="br_sick_note" onclick="openBenefitModal('br','sick')">Not included — click to add</span>
+        <span class="basis">Full Pay Rate</span>
+        <span class="note-col">FMLA baseline</span>
+      </div>
+      <div class="benefit-row">
+        <input type="checkbox" id="br_use_401k" onchange="onBenefitToggle('br','401k',this)">
+        <label for="br_use_401k">401(k) Match</label>
+        <span class="note off" id="br_k401_note" onclick="openBenefitModal('br','401k')">Not included — click to add</span>
+        <span class="basis">Full Pay Rate</span>
+        <span class="note-col">Employer contribution</span>
+      </div>
+      <div class="k401-opts" style="display:none">
+        <label><input type="radio" name="br_k401c" value="3" id="br_k401_3"> 3%</label>
+        <label><input type="radio" name="br_k401c" value="6" id="br_k401_6" checked> 6%</label>
+        <label><input type="radio" name="br_k401c" value="9" id="br_k401_9"> Both (9%)</label>
+        <label><input type="radio" name="br_k401c" value="6" id="br_k401_custom"> Custom</label>
+      </div>
+      <div class="cb-section-label">Custom Benefits</div>
+      <div id="br_custom_benefits"></div>
+      <button class="btn btn-sm cb-add-btn" style="background:var(--bg2);border:1px dashed var(--bdr)" onclick="openCustomBenefitModal('br', null)">+ Add Custom Benefit</button>
+    </div>
+  </div>
+
+  <!-- Live Margin Preview bar -->
+  <div id="br_live_bar" style="background:linear-gradient(135deg,#1E3A2F,#1E8449);border-radius:8px;padding:14px 18px;margin-bottom:12px;display:flex;gap:24px;flex-wrap:wrap;align-items:center">
+    <div style="color:#A8F0C0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px">Live Preview</div>
+    <div style="display:flex;flex-direction:column;gap:2px">
+      <span id="br_live_bill_label" style="font-size:10px;color:#A8F0C0;font-weight:600;text-transform:uppercase">Bill Rate</span>
+      <span id="br_live_bill" style="font-size:18px;font-weight:800;color:#fff;font-family:var(--mono)">$75.00</span>
+    </div>
+    <div style="color:#6EC99A;font-size:20px;font-weight:300">−</div>
+    <div style="display:flex;flex-direction:column;gap:2px">
+      <span style="font-size:10px;color:#A8F0C0;font-weight:600;text-transform:uppercase">Total Cost/hr</span>
+      <span id="br_live_cost" style="font-size:18px;font-weight:800;color:#FFD580;font-family:var(--mono)">$--</span>
+    </div>
+    <div style="color:#6EC99A;font-size:20px;font-weight:300">=</div>
+    <div style="display:flex;flex-direction:column;gap:2px">
+      <span style="font-size:10px;color:#A8F0C0;font-weight:600;text-transform:uppercase">Margin/hr</span>
+      <span id="br_live_margin" style="font-size:22px;font-weight:800;color:#4FE89A;font-family:var(--mono)">$--</span>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:2px">
+      <span style="font-size:10px;color:#A8F0C0;font-weight:600;text-transform:uppercase">Margin %</span>
+      <span id="br_live_pct" style="font-size:22px;font-weight:800;color:#4FE89A;font-family:var(--mono)">--%</span>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:2px">
+      <span style="font-size:10px;color:#A8F0C0;font-weight:600;text-transform:uppercase">Contract Profit</span>
+      <span id="br_live_total" style="font-size:16px;font-weight:800;color:#fff;font-family:var(--mono)">$--</span>
+    </div>
+  </div>
+
+  <div class="action-row print-hide">
+    <button class="btn btn-primary" style="background:linear-gradient(135deg,var(--grn),#145A32)" onclick="calcBR()">⚡ CALCULATE</button>
+    <button class="btn btn-green btn-sm" onclick="brExportCSV()">⬇ Export CSV</button>
+    <button class="btn btn-blue btn-sm" onclick="exportPDF()">🖨 Export PDF</button>
+    <button class="btn btn-gold btn-sm" onclick="saveCalc()">💾 Save</button>
+  </div>
+
+  <div id="br_results"></div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- W2 TAB -->
+<!-- ═══════════════════════════════════════════════ -->
+<div id="tab-w2" class="tab-pane">
+
+  <!-- Candidate Info -->
+  <div class="card">
+    <div class="card-title">Candidate &amp; Assignment Details</div>
+    <div class="card-body">
+      <div class="form-row">
+        <div class="form-group" style="flex:1;min-width:180px">
+          <label>Candidate Name</label>
+          <input type="text" id="w2_cn" placeholder="Full name">
+        </div>
+        <div class="form-group" style="flex:1;min-width:180px">
+          <label>Job Title / Specialty</label>
+          <input type="text" id="w2_jt" placeholder="e.g. RN ICU">
+        </div>
+        <div class="form-group" style="flex:1;min-width:180px">
+          <label>Client / Facility</label>
+          <input type="text" id="w2_cl" placeholder="Hospital / clinic name">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pay Rate & Contract -->
+  <div class="card">
+    <div class="card-title">Pay Rate &amp; Contract</div>
+    <div class="card-body">
+      <div class="form-row" style="align-items:flex-end;flex-wrap:wrap">
+        <div class="form-group">
+          <label>Pay Rate ($/hr)</label>
+          <input type="number" id="w2_pay" class="large" value="50.00" step="0.5" min="0" oninput="w2UpdateTB()">
+        </div>
+        <div class="form-group">
+          <label>Contract Period</label>
+          <div class="period-toggle" id="w2_period_toggle">
+            <button class="active" onclick="w2SetPeriod('weeks',this)">Weeks</button>
+            <button onclick="w2SetPeriod('months',this)">Months</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label id="w2_duration_label">Number of Weeks</label>
+          <input type="number" id="w2_wks" value="13" min="1" max="260" style="width:90px" oninput="w2UpdateTB()">
+        </div>
+        <div class="form-group">
+          <label id="w2_hrs_label">Hours / Week</label>
+          <input type="number" id="w2_hrs" value="40" min="1" max="400" style="width:90px" oninput="w2UpdateTB()">
+        </div>
+        <div class="form-group" style="justify-content:flex-end;padding-bottom:2px">
+          <span id="w2_contract_summary" style="font-size:12px;color:var(--hdr2);font-weight:600;background:var(--ltbl);border:1px solid var(--bdr);border-radius:6px;padding:8px 12px;white-space:nowrap">
+            13 wks × 40 hrs = 520 hrs
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Location & GSA Per Diem -->
+  <div class="card">
+    <div class="card-title">Assignment Location &amp; GSA Per Diem</div>
+    <div style="padding: 6px 16px 0; font-size: 11px; color: var(--mut);">Select state then city — type to filter</div>
+    <div class="card-body" style="padding-bottom: 6px;">
+      <div class="form-row">
+        <div class="form-group" style="min-width:220px">
+          <label>State</label>
+          <div class="custom-select-wrap">
+            <select id="w2_state" onchange="w2StateChange()">
+              <option value="">-- Select State --</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group" style="min-width:240px">
+          <label>City</label>
+          <div class="custom-select-wrap">
+            <select id="w2_city" onchange="w2CityChange()">
+              <option value="">-- Select City --</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Per Diem Bar -->
+    <div class="pd-bar">
+      <div class="pd-item">
+        <span class="pd-label">Lodging/night</span>
+        <span class="pd-val" id="w2_lo_d">$110</span>
+      </div>
+      <div class="pd-item">
+        <span class="pd-label">M&amp;IE/day</span>
+        <span class="pd-val" id="w2_me_d">$68</span>
+      </div>
+      <div class="pd-item">
+        <span class="pd-label">Total/day</span>
+        <span class="pd-val" id="w2_to_d">$178</span>
+      </div>
+      <div class="pd-item" style="border-left:2px solid var(--bdr);padding-left:16px">
+        <span class="pd-label">Weekly Total</span>
+        <span class="pd-val" id="w2_pw_d" style="color:var(--grn)">--</span>
+      </div>
+      <div class="pd-item">
+        <span class="pd-label">Per Diem/hr</span>
+        <span class="pd-val" id="w2_ph_d">--</span>
+      </div>
+    </div>
+
+    <!-- Weekly / Period PD Summary -->
+    <div class="pd-weekly-bar" id="w2_pd_weekly_bar" style="display:none">
+      <div class="pw-item">
+        <span class="pw-label">PD Days/wk</span>
+        <span class="pw-val" id="pw_days">7 days</span>
+      </div>
+      <div class="pw-divider"></div>
+      <div class="pw-item">
+        <span class="pw-label">Weekly PD Total</span>
+        <span class="pw-val" id="pw_weekly">--</span>
+      </div>
+      <div class="pw-divider"></div>
+      <div class="pw-item">
+        <span class="pw-label" id="pw_period_label">Contract PD Total</span>
+        <span class="pw-val" id="pw_contract">--</span>
+      </div>
+    </div>
+
+    <!-- Taxable base note -->
+    <div class="tb-note" id="w2_tb_note">
+      Taxable Base Pay = $50.00/hr &nbsp;|&nbsp; W2 tax on full pay rate
+    </div>
+
+    <!-- Per Diem options -->
+    <div class="pd-options">
+      <label>
+        <input type="checkbox" id="w2_use_pd" checked onchange="w2UpdateTB()">
+        Include Per Diem
+      </label>
+      <div class="pd-days-row">
+        <span style="font-size:12px;color:var(--mut)">Days/week:</span>
+        <input type="number" id="w2_pdd" value="7" min="1" max="7" oninput="w2UpdateTB()">
+      </div>
+      <span class="muted">(W2 tax on taxable base only; benefits on full pay)</span>
+    </div>
+  </div>
+
+  <!-- Benefits -->
+  <div class="card">
+    <div class="card-title">Benefits Package</div>
+    <div style="display:flex;align-items:center;gap:0;padding:4px 16px 6px;font-size:12px;font-weight:700;color:var(--mut);border-bottom:1px solid var(--bdr);">
+      <span style="width:26px;flex-shrink:0"></span>
+      <span style="flex:1">Benefit</span>
+      <span style="width:160px;flex-shrink:0">Amount</span>
+      <span style="width:110px;flex-shrink:0">Basis</span>
+      <span style="flex:0 0 120px">Note</span>
+    </div>
+    <div class="benefit-row">
+      <input type="checkbox" id="use_hi" onchange="onBenefitToggle('w2','hi',this)">
+      <label for="use_hi">Health Insurance</label>
+      <span class="note off" id="hi_note" onclick="openBenefitModal('w2','hi')">Not included — click to add</span>
+      <span class="basis">Full Pay Rate</span>
+      <span class="note-col">Medical+Dental+Vision</span>
+    </div>
+    <div class="benefit-row">
+      <input type="checkbox" id="use_vac" onchange="onBenefitToggle('w2','vac',this)">
+      <label for="use_vac">Paid Vacation</label>
+      <span class="note off" id="vac_note" onclick="openBenefitModal('w2','vac')">Not included — click to add</span>
+      <span class="basis">Full Pay Rate</span>
+      <span class="note-col">Days × daily rate</span>
+    </div>
+    <div class="benefit-row">
+      <input type="checkbox" id="use_hol" onchange="onBenefitToggle('w2','hol',this)">
+      <label for="use_hol">Public Holidays</label>
+      <span class="note off" id="hol_note" onclick="openBenefitModal('w2','hol')">Not included — click to add</span>
+      <span class="basis">Full Pay Rate</span>
+      <span class="note-col">Federal holidays</span>
+    </div>
+    <div class="benefit-row">
+      <input type="checkbox" id="use_sick" onchange="onBenefitToggle('w2','sick',this)">
+      <label for="use_sick">Sick Leave</label>
+      <span class="note off" id="sick_note" onclick="openBenefitModal('w2','sick')">Not included — click to add</span>
+      <span class="basis">Full Pay Rate</span>
+      <span class="note-col">FMLA baseline</span>
+    </div>
+    <div class="benefit-row">
+      <input type="checkbox" id="use_401k" onchange="onBenefitToggle('w2','401k',this)">
+      <label for="use_401k">401(k) Match</label>
+      <span class="note off" id="k401_note" onclick="openBenefitModal('w2','401k')">Not included — click to add</span>
+      <span class="basis">Full Pay Rate</span>
+      <span class="note-col">Employer contribution</span>
+    </div>
+
+    <div class="k401-opts" style="display:none">
+      <label><input type="radio" name="k401c" value="3" id="k401_3"> 3%</label>
+      <label><input type="radio" name="k401c" value="6" id="k401_6" checked> 6%</label>
+      <label><input type="radio" name="k401c" value="9" id="k401_9"> Both (9%)</label>
+      <label><input type="radio" name="k401c" value="6" id="k401_custom"> Custom</label>
+    </div>
+
+    <!-- Custom benefits injected here -->
+    <div class="cb-section-label">Custom Benefits</div>
+    <div id="w2_custom_benefits"></div>
+    <button class="btn btn-sm cb-add-btn" style="background:var(--bg2);border:1px dashed var(--bdr)" onclick="openCustomBenefitModal('w2', null)">+ Add Custom Benefit</button>
+
+    <div class="et-row">
+      <label>Employer Tax %:</label>
+      <input type="number" id="w2_et" value="12" step="0.1" min="0" max="30" oninput="w2UpdateTB()">
+      <span class="et-note">% on Taxable Base &nbsp;(FICA + FUTA + SUTA + Workers Comp)</span>
+    </div>
+  </div>
+
+  <!-- Margin -->
+  <div class="card">
+    <div class="card-title">Your Margin %</div>
+    <div class="card-body">
+      <div class="form-row" style="align-items:center">
+        <div class="form-group">
+          <label>Margin %</label>
+          <input type="number" id="w2_mg" class="large green" value="20.0" step="0.5" min="0" max="200">
+        </div>
+        <span style="font-size:13px;color:var(--mut);padding-top:20px">— additive markup on total cost</span>
+      </div>
+      <div class="form-group" style="margin-top:6px">
+        <label>Margin Calculation Basis</label>
+        <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:13px;padding-top:4px">
+          <label style="display:flex;align-items:center;gap:6px;font-weight:400"><input type="radio" name="mg_basis" id="mg_basis_bp" value="base_pay" checked> Base Pay Rate</label>
+          <label style="display:flex;align-items:center;gap:6px;font-weight:400"><input type="radio" name="mg_basis" id="mg_basis_tc" value="total_cost"> Total Cost (Pay+Benefits+Tax)</label>
+          <label style="display:flex;align-items:center;gap:6px;font-weight:400"><input type="radio" name="mg_basis" id="mg_basis_tp" value="taxable_pd"> Taxable Base + Per Diem</label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="action-row print-hide">
+    <button class="btn btn-primary" onclick="calcW2()">⚡ CALCULATE</button>
+    <button class="btn btn-green btn-sm" onclick="exportCSV()">⬇ Export CSV</button>
+    <button class="btn btn-blue btn-sm" onclick="exportPDF()">🖨 Export PDF</button>
+    <button class="btn btn-gold btn-sm" onclick="saveCalc()">💾 Save</button>
+  </div>
+
+  <div id="w2_results"></div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- 1099 TAB -->
+<!-- ═══════════════════════════════════════════════ -->
+<div id="tab-c99" class="tab-pane">
+
+  <div class="card">
+    <div class="card-title" style="color:var(--orn)">Contractor &amp; Assignment Details</div>
+    <div class="card-body">
+      <div class="form-row">
+        <div class="form-group" style="flex:1;min-width:180px">
+          <label>Contractor Name</label>
+          <input type="text" id="c99_cn" placeholder="Full name">
+        </div>
+        <div class="form-group" style="flex:1;min-width:180px">
+          <label>Specialty / Role</label>
+          <input type="text" id="c99_rt" placeholder="e.g. Travel Nurse">
+        </div>
+        <div class="form-group" style="flex:1;min-width:180px">
+          <label>Client / Facility</label>
+          <input type="text" id="c99_cl" placeholder="Hospital / clinic name">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title" style="color:var(--orn)">Assignment Location (Reference)</div>
+    <div style="padding: 4px 16px 0; font-size: 11px; color: var(--mut);">Location shown for reference — per diem not applied to 1099 cost</div>
+    <div class="card-body">
+      <div class="form-row">
+        <div class="form-group" style="min-width:220px">
+          <label>State</label>
+          <div class="custom-select-wrap">
+            <select id="c99_state" onchange="c99StateChange()">
+              <option value="">-- Select State --</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group" style="min-width:240px">
+          <label>City</label>
+          <div class="custom-select-wrap">
+            <select id="c99_city">
+              <option value="">-- Select City --</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title" style="color:var(--orn)">Contract Details</div>
+    <div class="card-body">
+      <div class="form-row" style="align-items:flex-end;flex-wrap:wrap">
+        <div class="form-group">
+          <label>1099 Pay Rate ($/hr)</label>
+          <input type="number" id="c99_pay" class="large orange" value="65.00" step="0.5" min="0">
+        </div>
+        <div class="form-group">
+          <label>Contract Period</label>
+          <div class="period-toggle" id="c99_period_toggle">
+            <button class="active" onclick="c99SetPeriod('weeks',this)">Weeks</button>
+            <button onclick="c99SetPeriod('months',this)">Months</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label id="c99_duration_label">Number of Weeks</label>
+          <input type="number" id="c99_wks" value="13" min="1" max="260" style="width:90px" oninput="c99UpdateSummary()">
+        </div>
+        <div class="form-group">
+          <label id="c99_hrs_label">Hours / Week</label>
+          <input type="number" id="c99_hrs" value="40" min="1" max="400" style="width:90px" oninput="c99UpdateSummary()">
+        </div>
+        <div class="form-group" style="justify-content:flex-end;padding-bottom:2px">
+          <span id="c99_contract_summary" style="font-size:12px;color:var(--orn);font-weight:600;background:var(--ltor);border:1px solid #f0c090;border-radius:6px;padding:8px 12px;white-space:nowrap">
+            13 wks × 40 hrs = 520 hrs
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title" style="color:var(--orn)">Margin %</div>
+    <div class="card-body">
+      <div class="form-row" style="align-items:center">
+        <div class="form-group">
+          <label>Margin %</label>
+          <input type="number" id="c99_mg" class="large green" value="20.0" step="0.5" min="0" max="200">
+        </div>
+        <span style="font-size:13px;color:var(--mut);padding-top:20px">→ Bill Rate = Pay Rate × (1 + Margin%)</span>
+      </div>
+      <div class="info-box">
+        <div class="info-item">No employer tax burden (saves ~12%)</div>
+        <div class="info-item">No health insurance obligation</div>
+        <div class="info-item">No paid leave / holidays / sick pay</div>
+        <div class="info-item">No 401(k) matching required</div>
+        <div class="info-item">Bill Rate = Pay Rate × (1 + Margin%)</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="action-row print-hide">
+    <button class="btn btn-primary-orn" onclick="calc1099()">⚡ CALCULATE</button>
+    <button class="btn btn-green btn-sm" onclick="exportCSV()">⬇ Export CSV</button>
+    <button class="btn btn-blue btn-sm" onclick="exportPDF()">🖨 Export PDF</button>
+    <button class="btn btn-gold btn-sm" onclick="saveCalc()">💾 Save</button>
+  </div>
+
+  <div id="c99_results"></div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- PER DIEM MANAGER TAB -->
+<!-- ═══════════════════════════════════════════════ -->
+<div id="tab-pd" class="tab-pane">
+  <div class="pd-manager">
+    <div class="pd-manager-header">
+      <div>
+        <h2>GSA Per Diem Manager</h2>
+        <div class="sub">Standard CONUS: $110 lodging + $68 M&amp;IE = $178/day &nbsp;|&nbsp; Click any row to edit</div>
+      </div>
+    </div>
+
+    <div class="pd-top-grid">
+      <!-- Live GSA Rate Update -->
+      <div class="card" style="margin:0">
+        <div class="card-title">🔄 Live GSA Rate Update</div>
+        <div class="card-body gsa-card-lite">
+          <div class="row">
+            <select id="gsa_fy">
+              <option value="2026">FY 2026</option>
+              <option value="2025" selected>FY 2025</option>
+              <option value="2024">FY 2024</option>
+            </select>
+            <button class="btn-gsa-update" id="gsa_update_btn" onclick="pdGSAButtonClick()">⬇ Update Rates per GSA</button>
+          </div>
+          <div id="gsa_status"></div>
+        </div>
+      </div>
+
+      <!-- Per Diem Coverage -->
+      <div class="card" style="margin:0">
+        <div class="card-title">Per Diem Coverage &amp; Pass-Through %</div>
+        <div class="card-body" style="padding-top:8px">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+            <button class="pd-pct-preset" onclick="setPDPct(100)" id="pdp_100">✅ 100%</button>
+            <button class="pd-pct-preset" onclick="setPDPct(75)"  id="pdp_75">75%</button>
+            <button class="pd-pct-preset" onclick="setPDPct(50)"  id="pdp_50">50%</button>
+            <button class="pd-pct-preset" onclick="setPDPct(25)"  id="pdp_25">25%</button>
+            <button class="pd-pct-preset" onclick="setPDPct(0)"   id="pdp_0">🚫 0%</button>
+          </div>
+          <div style="display:flex;align-items:center;gap:14px;margin-bottom:8px">
+            <input type="range" id="st_pd_pct_slider" min="0" max="100" step="5" value="100"
+              oninput="onPDSlider(this.value)"
+              style="flex:1;accent-color:var(--acc);cursor:pointer">
+            <div style="display:flex;align-items:center;gap:4px">
+              <input type="number" id="st_pd_pct" value="100" min="0" max="100" step="1"
+                oninput="onPDInput(this.value)"
+                style="width:60px;padding:6px 8px;background:var(--ltbl);border:1px solid var(--bdr);border-radius:6px;font-family:var(--mono);font-size:14px;font-weight:700;color:var(--acc);text-align:center">
+              <span style="font-size:14px;font-weight:700;color:var(--acc)">%</span>
+            </div>
+          </div>
+          <div id="pd_pct_preview" style="background:var(--ltbl);border:1px solid var(--bdr);border-radius:6px;padding:8px 12px;font-size:11px;color:var(--drk);line-height:1.7">
+            Standard CONUS ($178/day): At <span id="pdp_pct_lbl" style="font-weight:700;color:var(--acc)">100%</span> →
+            <span id="pdp_eff_day" style="font-weight:700;color:var(--grn)">$178.00/day</span> /
+            <span id="pdp_eff_hr" style="font-weight:700;color:var(--grn)">$22.25/hr</span>
+            <span id="pdp_withheld_row" style="display:none">
+              &nbsp;|&nbsp; Withheld: <span id="pdp_withheld" style="font-weight:700;color:var(--orn)">$0.00/hr</span>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pd-controls">
+      <!-- Filter Card -->
+      <div class="card" style="margin:0">
+        <div class="card-title">Filter &amp; Browse</div>
+        <div class="card-body">
+          <div class="form-row">
+            <div class="form-group" style="flex:1">
+              <label>State</label>
+              <div class="custom-select-wrap">
+                <select id="pd_fstate" onchange="loadPDTable()">
+                  <option value="">All States</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group" style="flex:1">
+              <label>Search</label>
+              <input type="text" id="pd_search" placeholder="City, county..." oninput="loadPDTable()">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Edit Card -->
+      <div class="card" style="margin:0">
+        <div class="card-title">Add / Update Rate</div>
+        <div class="card-body">
+          <div class="form-row" style="flex-wrap:wrap;gap:8px">
+            <div class="form-group"><label>ST</label><input type="text" id="pde_sa" placeholder="CA" style="width:50px"></div>
+            <div class="form-group" style="flex:1;min-width:90px"><label>State</label><input type="text" id="pde_sf" placeholder="California"></div>
+            <div class="form-group" style="flex:1;min-width:90px"><label>City</label><input type="text" id="pde_ci" placeholder="San Francisco"></div>
+            <div class="form-group" style="flex:1;min-width:90px"><label>County</label><input type="text" id="pde_co" placeholder="San Francisco County"></div>
+            <div class="form-group"><label>Lodging</label><input type="number" id="pde_lo" placeholder="182" style="width:70px"></div>
+            <div class="form-group"><label>M&amp;IE</label><input type="number" id="pde_me" placeholder="79" style="width:60px"></div>
+          </div>
+          <div class="action-row" style="padding:0">
+            <button class="btn btn-green btn-sm" onclick="pdSave()">💾 Save Rate</button>
+            <button class="btn btn-red btn-sm" onclick="pdDelete()">🗑 Delete</button>
+            <button class="btn btn-muted btn-sm" onclick="pdReseed()">↺ Re-seed</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pd-status" id="pd_status">Loading...</div>
+
+    <div class="pd-table-wrap">
+      <table id="pd-table">
+        <thead>
+          <tr>
+            <th onclick="pdSort('st')">ST ↕</th>
+            <th onclick="pdSort('state')">State ↕</th>
+            <th onclick="pdSort('city')">City ↕</th>
+            <th>County</th>
+            <th onclick="pdSort('lodging')">Lodging ↕</th>
+            <th onclick="pdSort('meals')">M&amp;IE ↕</th>
+            <th onclick="pdSort('total')">Total/Day ↕</th>
+            <th>Updated</th>
+            <th>Use</th>
+          </tr>
+        </thead>
+        <tbody id="pd_tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- SAVED TAB -->
+<!-- ═══════════════════════════════════════════════ -->
+<div id="tab-saved" class="tab-pane">
+  <div class="saved-header">
+    <h2>Saved Calculations</h2>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button class="btn btn-red btn-sm" onclick="deleteSelectedSaved()" id="sv_del_sel_btn" style="display:none">🗑 Delete Selected</button>
+      <button class="btn btn-red btn-sm" onclick="clearSaved()">🗑 Clear All</button>
+    </div>
+  </div>
+  <div class="sv-sel-bar print-hide">
+    <label style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--hdr2);cursor:pointer">
+      <input type="checkbox" id="sv_chk_all" onchange="toggleAllSaved(this)"> Select All
+    </label>
+    <span id="sv_sel_count"></span>
+  </div>
+  <div class="table-wrap">
+    <table id="sv-table">
+      <thead>
+        <tr>
+          <th></th>
+          <th>Date</th><th>Candidate</th><th>Job Title</th><th>Client</th>
+          <th>Type</th><th>Pay Rate</th><th>Bill Rate</th><th>Margin %</th><th>Location</th><th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="sv_tbody"></tbody>
+    </table>
+  </div>
+  <div id="sv_empty" style="padding:30px;text-align:center;color:var(--mut);font-size:13px;display:none">No saved calculations yet. Run a calculation and click Save.</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- BENEFIT CONFIG MODAL (shared by all benefit toggles) -->
+<!-- ═══════════════════════════════════════════════ -->
+<div class="modal-overlay" id="bn_modal_overlay">
+  <div class="modal-box">
+    <div class="modal-header" id="bn_modal_title">Configure Benefit</div>
+    <div class="modal-body" id="bn_modal_body"></div>
+    <div class="modal-footer">
+      <button class="modal-btn-cancel" onclick="closeBenefitModal(true)">Cancel</button>
+      <button class="modal-btn-save" onclick="saveBenefitModal()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- JAVASCRIPT -->
+<!-- ═══════════════════════════════════════════════ -->
+<script>
+// ── GSA DATA ──────────────────────────────────────────────────────
+const GSA_DATA = [
+  ["--","Standard CONUS","Standard CONUS","All Counties",110,68],
+  ["AL","Alabama","Birmingham","Jefferson County",106,68],
+  ["AL","Alabama","Huntsville","Madison County",110,68],
+  ["AL","Alabama","Mobile","Mobile County",101,68],
+  ["AL","Alabama","Montgomery","Montgomery County",96,68],
+  ["AK","Alaska","Anchorage","Municipality of Anchorage",192,74],
+  ["AK","Alaska","Fairbanks","Fairbanks North Star Borough",141,74],
+  ["AK","Alaska","Juneau","City and Borough of Juneau",197,74],
+  ["AK","Alaska","Kodiak","Kodiak Island Borough",148,74],
+  ["AZ","Arizona","Flagstaff","Coconino County",119,68],
+  ["AZ","Arizona","Phoenix","Maricopa County",131,74],
+  ["AZ","Arizona","Scottsdale","Maricopa County",131,74],
+  ["AZ","Arizona","Sedona","Yavapai County",166,74],
+  ["AZ","Arizona","Tucson","Pima County",97,68],
+  ["AZ","Arizona","Yuma","Yuma County",96,68],
+  ["AR","Arkansas","Fayetteville","Washington County",106,68],
+  ["AR","Arkansas","Hot Springs","Garland County",98,68],
+  ["AR","Arkansas","Little Rock","Pulaski County",100,68],
+  ["CA","California","Berkeley","Alameda County",182,79],
+  ["CA","California","Fresno","Fresno County",105,68],
+  ["CA","California","Los Angeles","Los Angeles County",182,79],
+  ["CA","California","Monterey","Monterey County",182,79],
+  ["CA","California","Napa","Napa County",182,79],
+  ["CA","California","Oakland","Alameda County",182,79],
+  ["CA","California","Palm Springs","Riverside County",131,74],
+  ["CA","California","Sacramento","Sacramento County",130,74],
+  ["CA","California","San Diego","San Diego County",182,79],
+  ["CA","California","San Francisco","San Francisco County",182,79],
+  ["CA","California","San Jose","Santa Clara County",182,79],
+  ["CA","California","San Luis Obispo","San Luis Obispo County",131,74],
+  ["CA","California","Santa Barbara","Santa Barbara County",182,79],
+  ["CA","California","Santa Cruz","Santa Cruz County",182,79],
+  ["CA","California","South Lake Tahoe","El Dorado County",131,74],
+  ["CO","Colorado","Aspen","Pitkin County",258,79],
+  ["CO","Colorado","Boulder","Boulder County",131,74],
+  ["CO","Colorado","Colorado Springs","El Paso County",119,68],
+  ["CO","Colorado","Denver","Denver County",152,79],
+  ["CO","Colorado","Durango","La Plata County",119,68],
+  ["CO","Colorado","Fort Collins","Larimer County",106,68],
+  ["CO","Colorado","Glenwood Springs","Garfield County",131,74],
+  ["CO","Colorado","Grand Junction","Mesa County",100,68],
+  ["CO","Colorado","Pueblo","Pueblo County",96,68],
+  ["CO","Colorado","Steamboat Springs","Routt County",131,74],
+  ["CO","Colorado","Telluride","San Miguel County",258,79],
+  ["CO","Colorado","Vail","Eagle County",258,79],
+  ["CT","Connecticut","Bridgeport","Fairfield County",106,68],
+  ["CT","Connecticut","Hartford","Hartford County",119,68],
+  ["CT","Connecticut","New Haven","New Haven County",119,68],
+  ["CT","Connecticut","Stamford","Fairfield County",119,68],
+  ["DE","Delaware","Dover","Kent County",100,68],
+  ["DE","Delaware","Wilmington","New Castle County",119,68],
+  ["DC","District of Columbia","Washington DC","District of Columbia",258,79],
+  ["FL","Florida","Boca Raton","Palm Beach County",131,74],
+  ["FL","Florida","Daytona Beach","Volusia County",100,68],
+  ["FL","Florida","Fort Lauderdale","Broward County",131,74],
+  ["FL","Florida","Fort Myers","Lee County",131,74],
+  ["FL","Florida","Fort Walton Beach","Okaloosa County",110,68],
+  ["FL","Florida","Jacksonville","Duval County",100,68],
+  ["FL","Florida","Key West","Monroe County",196,79],
+  ["FL","Florida","Miami","Miami-Dade County",152,79],
+  ["FL","Florida","Naples","Collier County",152,79],
+  ["FL","Florida","Orlando","Orange County",131,74],
+  ["FL","Florida","Panama City","Bay County",106,68],
+  ["FL","Florida","Pensacola","Escambia County",106,68],
+  ["FL","Florida","Sarasota","Sarasota County",131,74],
+  ["FL","Florida","St. Augustine","St. Johns County",119,68],
+  ["FL","Florida","Tallahassee","Leon County",100,68],
+  ["FL","Florida","Tampa","Hillsborough County",131,74],
+  ["FL","Florida","West Palm Beach","Palm Beach County",131,74],
+  ["GA","Georgia","Atlanta","Fulton County",152,79],
+  ["GA","Georgia","Augusta","Richmond County",100,68],
+  ["GA","Georgia","Brunswick","Glynn County",100,68],
+  ["GA","Georgia","Columbus","Muscogee County",96,68],
+  ["GA","Georgia","Macon","Bibb County",96,68],
+  ["GA","Georgia","Savannah","Chatham County",119,68],
+  ["HI","Hawaii","Hilo","Hawaii County",148,79],
+  ["HI","Hawaii","Honolulu","Honolulu County",203,79],
+  ["HI","Hawaii","Kauai","Kauai County",203,79],
+  ["HI","Hawaii","Maui","Maui County",203,79],
+  ["ID","Idaho","Boise","Ada County",100,68],
+  ["ID","Idaho","Coeur d Alene","Kootenai County",106,68],
+  ["ID","Idaho","Idaho Falls","Bonneville County",96,68],
+  ["ID","Idaho","Sun Valley","Blaine County",196,79],
+  ["IL","Illinois","Chicago","Cook County",202,79],
+  ["IL","Illinois","Bloomington","McLean County",96,68],
+  ["IL","Illinois","Peoria","Peoria County",96,68],
+  ["IL","Illinois","Springfield","Sangamon County",100,68],
+  ["IN","Indiana","Fort Wayne","Allen County",96,68],
+  ["IN","Indiana","Indianapolis","Marion County",100,68],
+  ["IN","Indiana","South Bend","St. Joseph County",96,68],
+  ["IA","Iowa","Des Moines","Polk County",100,68],
+  ["IA","Iowa","Iowa City","Johnson County",100,68],
+  ["KS","Kansas","Kansas City","Wyandotte County",100,68],
+  ["KS","Kansas","Topeka","Shawnee County",96,68],
+  ["KS","Kansas","Wichita","Sedgwick County",96,68],
+  ["KY","Kentucky","Lexington","Fayette County",100,68],
+  ["KY","Kentucky","Louisville","Jefferson County",110,68],
+  ["LA","Louisiana","Baton Rouge","East Baton Rouge Parish",100,68],
+  ["LA","Louisiana","Lafayette","Lafayette Parish",100,68],
+  ["LA","Louisiana","New Orleans","Orleans Parish",152,79],
+  ["ME","Maine","Bar Harbor","Hancock County",119,68],
+  ["ME","Maine","Portland","Cumberland County",119,68],
+  ["MD","Maryland","Annapolis","Anne Arundel County",119,68],
+  ["MD","Maryland","Baltimore","Baltimore City",131,74],
+  ["MD","Maryland","Ocean City","Worcester County",119,68],
+  ["MD","Maryland","Rockville","Montgomery County",258,79],
+  ["MA","Massachusetts","Boston","Suffolk County",258,79],
+  ["MA","Massachusetts","Cape Cod","Barnstable County",196,79],
+  ["MA","Massachusetts","Nantucket","Nantucket County",376,79],
+  ["MA","Massachusetts","Springfield","Hampden County",100,68],
+  ["MA","Massachusetts","Worcester","Worcester County",106,68],
+  ["MI","Michigan","Ann Arbor","Washtenaw County",119,68],
+  ["MI","Michigan","Detroit","Wayne County",131,74],
+  ["MI","Michigan","Grand Rapids","Kent County",106,68],
+  ["MI","Michigan","Lansing","Ingham County",100,68],
+  ["MI","Michigan","Traverse City","Grand Traverse County",119,68],
+  ["MN","Minnesota","Duluth","St. Louis County",100,68],
+  ["MN","Minnesota","Minneapolis","Hennepin County",131,74],
+  ["MN","Minnesota","Rochester","Olmsted County",110,68],
+  ["MN","Minnesota","St. Paul","Ramsey County",131,74],
+  ["MS","Mississippi","Biloxi","Harrison County",100,68],
+  ["MS","Mississippi","Jackson","Hinds County",96,68],
+  ["MO","Missouri","Columbia","Boone County",96,68],
+  ["MO","Missouri","Kansas City","Jackson County",100,68],
+  ["MO","Missouri","St. Louis","St. Louis City",110,68],
+  ["MT","Montana","Billings","Yellowstone County",100,68],
+  ["MT","Montana","Bozeman","Gallatin County",106,68],
+  ["MT","Montana","Great Falls","Cascade County",96,68],
+  ["MT","Montana","Helena","Lewis and Clark County",100,68],
+  ["MT","Montana","Missoula","Missoula County",100,68],
+  ["NE","Nebraska","Lincoln","Lancaster County",100,68],
+  ["NE","Nebraska","Omaha","Douglas County",100,68],
+  ["NV","Nevada","Las Vegas","Clark County",119,68],
+  ["NV","Nevada","Reno","Washoe County",100,68],
+  ["NH","New Hampshire","Concord","Merrimack County",100,68],
+  ["NH","New Hampshire","Manchester","Hillsborough County",100,68],
+  ["NH","New Hampshire","Portsmouth","Rockingham County",131,74],
+  ["NJ","New Jersey","Atlantic City","Atlantic County",119,68],
+  ["NJ","New Jersey","Newark","Essex County",258,79],
+  ["NJ","New Jersey","Princeton","Mercer County",131,74],
+  ["NJ","New Jersey","Trenton","Mercer County",119,68],
+  ["NM","New Mexico","Albuquerque","Bernalillo County",106,68],
+  ["NM","New Mexico","Santa Fe","Santa Fe County",131,74],
+  ["NM","New Mexico","Taos","Taos County",119,68],
+  ["NY","New York","Albany","Albany County",110,68],
+  ["NY","New York","Buffalo","Erie County",100,68],
+  ["NY","New York","Lake Placid","Essex County",131,74],
+  ["NY","New York","New York City","New York County",316,79],
+  ["NY","New York","Rochester","Monroe County",100,68],
+  ["NY","New York","Saratoga Springs","Saratoga County",131,74],
+  ["NY","New York","Syracuse","Onondaga County",100,68],
+  ["NY","New York","White Plains","Westchester County",258,79],
+  ["NC","North Carolina","Asheville","Buncombe County",119,68],
+  ["NC","North Carolina","Charlotte","Mecklenburg County",119,68],
+  ["NC","North Carolina","Durham","Durham County",110,68],
+  ["NC","North Carolina","Greensboro","Guilford County",100,68],
+  ["NC","North Carolina","Raleigh","Wake County",119,68],
+  ["NC","North Carolina","Wilmington","New Hanover County",106,68],
+  ["NC","North Carolina","Winston-Salem","Forsyth County",100,68],
+  ["ND","North Dakota","Bismarck","Burleigh County",96,68],
+  ["ND","North Dakota","Fargo","Cass County",100,68],
+  ["OH","Ohio","Akron","Summit County",96,68],
+  ["OH","Ohio","Cincinnati","Hamilton County",110,68],
+  ["OH","Ohio","Cleveland","Cuyahoga County",119,68],
+  ["OH","Ohio","Columbus","Franklin County",100,68],
+  ["OH","Ohio","Dayton","Montgomery County",96,68],
+  ["OH","Ohio","Toledo","Lucas County",96,68],
+  ["OK","Oklahoma","Oklahoma City","Oklahoma County",96,68],
+  ["OK","Oklahoma","Tulsa","Tulsa County",96,68],
+  ["OR","Oregon","Bend","Deschutes County",131,74],
+  ["OR","Oregon","Eugene","Lane County",100,68],
+  ["OR","Oregon","Portland","Multnomah County",131,74],
+  ["OR","Oregon","Salem","Marion County",100,68],
+  ["PA","Pennsylvania","Allentown","Lehigh County",100,68],
+  ["PA","Pennsylvania","Erie","Erie County",96,68],
+  ["PA","Pennsylvania","Harrisburg","Dauphin County",100,68],
+  ["PA","Pennsylvania","Philadelphia","Philadelphia County",202,79],
+  ["PA","Pennsylvania","Pittsburgh","Allegheny County",119,68],
+  ["RI","Rhode Island","Newport","Newport County",152,79],
+  ["RI","Rhode Island","Providence","Providence County",131,74],
+  ["SC","South Carolina","Charleston","Charleston County",131,74],
+  ["SC","South Carolina","Columbia","Richland County",100,68],
+  ["SC","South Carolina","Hilton Head Island","Beaufort County",131,74],
+  ["SC","South Carolina","Myrtle Beach","Horry County",100,68],
+  ["SD","South Dakota","Rapid City","Pennington County",100,68],
+  ["SD","South Dakota","Sioux Falls","Minnehaha County",100,68],
+  ["TN","Tennessee","Chattanooga","Hamilton County",100,68],
+  ["TN","Tennessee","Knoxville","Knox County",100,68],
+  ["TN","Tennessee","Memphis","Shelby County",100,68],
+  ["TN","Tennessee","Nashville","Davidson County",131,74],
+  ["TX","Texas","Amarillo","Potter County",96,68],
+  ["TX","Texas","Austin","Travis County",131,74],
+  ["TX","Texas","Dallas","Dallas County",119,68],
+  ["TX","Texas","El Paso","El Paso County",96,68],
+  ["TX","Texas","Fort Worth","Tarrant County",119,68],
+  ["TX","Texas","Galveston","Galveston County",106,68],
+  ["TX","Texas","Houston","Harris County",119,68],
+  ["TX","Texas","Lubbock","Lubbock County",96,68],
+  ["TX","Texas","San Antonio","Bexar County",106,68],
+  ["UT","Utah","Moab","Grand County",131,74],
+  ["UT","Utah","Park City","Summit County",196,79],
+  ["UT","Utah","Salt Lake City","Salt Lake County",119,68],
+  ["VT","Vermont","Burlington","Chittenden County",131,74],
+  ["VT","Vermont","Stowe","Lamoille County",166,74],
+  ["VA","Virginia","Alexandria","Alexandria City",258,79],
+  ["VA","Virginia","Arlington","Arlington County",258,79],
+  ["VA","Virginia","Charlottesville","Charlottesville City",131,74],
+  ["VA","Virginia","Norfolk","Norfolk City",119,68],
+  ["VA","Virginia","Richmond","Richmond City",119,68],
+  ["VA","Virginia","Virginia Beach","Virginia Beach City",106,68],
+  ["VA","Virginia","Williamsburg","James City County",131,74],
+  ["WA","Washington","Bellevue","King County",190,79],
+  ["WA","Washington","Bellingham","Whatcom County",119,68],
+  ["WA","Washington","Olympia","Thurston County",110,68],
+  ["WA","Washington","Seattle","King County",190,79],
+  ["WA","Washington","Spokane","Spokane County",100,68],
+  ["WA","Washington","Tacoma","Pierce County",131,74],
+  ["WA","Washington","Vancouver","Clark County",131,74],
+  ["WV","West Virginia","Charleston","Kanawha County",100,68],
+  ["WV","West Virginia","Morgantown","Monongalia County",100,68],
+  ["WI","Wisconsin","Appleton","Outagamie County",100,68],
+  ["WI","Wisconsin","Green Bay","Brown County",100,68],
+  ["WI","Wisconsin","Madison","Dane County",110,68],
+  ["WI","Wisconsin","Milwaukee","Milwaukee County",106,68],
+  ["WY","Wyoming","Cheyenne","Laramie County",100,68],
+  ["WY","Wyoming","Jackson Hole","Teton County",231,79],
+];
+
+// ── PERSISTENT STORAGE (localStorage) ────────────────────────
+const LS_SETTINGS  = 'siri_settings';
+const LS_SAVED     = 'siri_saved_calcs';
+const LS_CUSTOM_PD = 'siri_custom_pd';
+const LS_CUSTOM_BN = 'siri_custom_benefits';
+
+function lsGet(key, fallback) {
+  try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
+  catch(e) { return fallback; }
+}
+function lsSet(key, val) {
+  try { localStorage.setItem(key, JSON.stringify(val)); } catch(e) {}
+}
+
+let savedCalcs = lsGet(LS_SAVED, []);
+let customPD = lsGet(LS_CUSTOM_PD, null);
+if (!customPD) {
+  customPD = GSA_DATA.map(r => ({
+    sa: r[0], sf: r[1], city: r[2], county: r[3],
+    lodging: r[4], meals: r[5], updated: new Date().toISOString().slice(0,10)
+  }));
+  lsSet(LS_CUSTOM_PD, customPD);
+}
+let lastResult = null;
+let pdSortCol = 'state', pdSortDir = 1;
+let customBenefits = lsGet(LS_CUSTOM_BN, []); // [{id, name, amount, type, note, enabled}]
+
+// ── SETTINGS IN MEMORY ─────────────────────────────────────────
+const DEFAULT_SETTINGS = {
+  health_insurance: 600, vacation_days: 10, holiday_days: 10,
+  sick_days: 5, k401_pct: 6, employer_tax_pct: 12,
+  hours_per_week: 40, margin_basis: 'base_pay', include_w2_tax: true,
+  pd_pct: 100
+};
+let settings = { ...DEFAULT_SETTINGS, ...lsGet(LS_SETTINGS, {}) };
+
+// ── HELPERS ────────────────────────────────────────────────────
+const fmtd = v => '$' + parseFloat(v).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+const fmtp = v => parseFloat(v).toFixed(2) + '%';
+const $ = id => document.getElementById(id);
+
+function toast(msg, type='') {
+  const t = document.createElement('div');
+  t.className = 'toast ' + type;
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2800);
+}
+
+// ── TAB SWITCHING ─────────────────────────────────────────────
+function showTab(name, btn) {
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  $('tab-' + name).classList.add('active');
+  btn.classList.add('active');
+  if (name === 'pd')    loadPDTable();
+  if (name === 'saved') loadSaved();
+  if (name === 'br')    brLiveUpdate();
+}
+
+// ── POPULATE STATES ───────────────────────────────────────────
+function initDropdowns() {
+  const stateMap = {};
+  GSA_DATA.forEach(r => {
+    if (r[0] !== '--' && !stateMap[r[1]]) stateMap[r[1]] = r[0];
+  });
+  const states = Object.keys(stateMap).sort();
+
+  ['w2_state','c99_state','pd_fstate','br_state'].forEach(id => {
+    const sel = $(id);
+    if (!sel) return;
+    const isFilter = id === 'pd_fstate';
+    if (!isFilter) sel.innerHTML = '<option value="">-- Select State --</option>';
+    states.forEach(sf => {
+      const o = document.createElement('option');
+      o.value = sf; o.textContent = sf;
+      sel.appendChild(o);
+    });
+  });
+}
+
+function w2StateChange() {
+  const sf = $('w2_state').value;
+  const cityEl = $('w2_city');
+  cityEl.innerHTML = '<option value="">-- Select City --</option>';
+  if (!sf) return;
+  const cities = [...new Set(
+    customPD.filter(r => r.sf === sf && r.sa !== '--').map(r => r.city)
+  )].sort();
+  cities.forEach(c => {
+    const o = document.createElement('option');
+    o.value = c; o.textContent = c;
+    cityEl.appendChild(o);
+  });
+  w2UpdateTB();
+}
+
+function w2CityChange() {
+  window._overridePD = null; // clear any manual override
+  const sf = $('w2_state').value;
+  const city = $('w2_city').value;
+  if (!city) return;
+  const row = customPD.find(r => r.sf === sf && r.city === city);
+  if (!row) return;
+  const lo = row.lodging, me = row.meals, tot = lo + me;
+  const hrs = parseInt($('w2_hrs').value) || 40;
+  const pdd = parseInt($('w2_pdd').value) || 7;
+  const phr = (tot * pdd) / Math.max(1, hrs);
+  const weekly_pd = tot * pdd;
+  $('w2_lo_d').textContent = '$' + lo;
+  $('w2_me_d').textContent = '$' + me;
+  $('w2_to_d').textContent = '$' + tot;
+  $('w2_pw_d').textContent = fmtd(weekly_pd);
+  $('w2_ph_d').textContent = fmtd(phr);
+  w2UpdateTB(); // updates weekly bar too
+}
+
+function c99StateChange() {
+  const sf = $('c99_state').value;
+  const cityEl = $('c99_city');
+  cityEl.innerHTML = '<option value="">-- Select City --</option>';
+  if (!sf) return;
+  const cities = [...new Set(
+    customPD.filter(r => r.sf === sf && r.sa !== '--').map(r => r.city)
+  )].sort();
+  cities.forEach(c => {
+    const o = document.createElement('option');
+    o.value = c; o.textContent = c;
+    cityEl.appendChild(o);
+  });
+}
+
+// ── CONTRACT PERIOD HELPERS ────────────────────────────────────
+let w2Period = 'weeks';   // 'weeks' | 'months'
+let c99Period = 'weeks';
+
+function w2SetPeriod(p, btn) {
+  w2Period = p;
+  document.querySelectorAll('#w2_period_toggle button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const isMonths = p === 'months';
+  $('w2_duration_label').textContent = isMonths ? 'Number of Months' : 'Number of Weeks';
+  $('w2_hrs_label').textContent       = isMonths ? 'Hours / Month'   : 'Hours / Week';
+  // Sensible defaults when switching
+  if (isMonths) {
+    if (parseInt($('w2_wks').value) > 60) $('w2_wks').value = 3;
+    $('w2_hrs').max = 744;
+  } else {
+    if (parseInt($('w2_wks').value) > 52) $('w2_wks').value = 13;
+    $('w2_hrs').max = 400;
+  }
+  w2UpdateTB();
+}
+
+function c99SetPeriod(p, btn) {
+  c99Period = p;
+  document.querySelectorAll('#c99_period_toggle button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const isMonths = p === 'months';
+  $('c99_duration_label').textContent = isMonths ? 'Number of Months' : 'Number of Weeks';
+  $('c99_hrs_label').textContent       = isMonths ? 'Hours / Month'   : 'Hours / Week';
+  if (isMonths) {
+    if (parseInt($('c99_wks').value) > 60) $('c99_wks').value = 3;
+  } else {
+    if (parseInt($('c99_wks').value) > 52) $('c99_wks').value = 13;
+  }
+  c99UpdateSummary();
+}
+
+// Returns { wks, hrs_per_week, total_hrs, ahr } from current W2 inputs
+function w2ContractParams() {
+  const raw_dur = parseInt($('w2_wks').value) || (w2Period === 'months' ? 3 : 13);
+  const raw_hrs = parseFloat($('w2_hrs').value) || (w2Period === 'months' ? 173 : 40);
+  let wks, hrs_per_week;
+  if (w2Period === 'months') {
+    wks = raw_dur * (52/12);          // convert months → equivalent weeks
+    hrs_per_week = raw_hrs / (52/12); // hours/month → hours/week equivalent
+  } else {
+    wks = raw_dur;
+    hrs_per_week = raw_hrs;
+  }
+  const total_hrs = Math.round(raw_dur * raw_hrs);
+  const ahr = hrs_per_week * 52;
+  return { raw_dur, raw_hrs, wks, hrs_per_week, total_hrs, ahr };
+}
+
+function c99ContractParams() {
+  const raw_dur = parseInt($('c99_wks').value) || (c99Period === 'months' ? 3 : 13);
+  const raw_hrs = parseFloat($('c99_hrs').value) || (c99Period === 'months' ? 173 : 40);
+  let wks, hrs_per_week;
+  if (c99Period === 'months') {
+    wks = raw_dur * (52/12);
+    hrs_per_week = raw_hrs / (52/12);
+  } else {
+    wks = raw_dur;
+    hrs_per_week = raw_hrs;
+  }
+  const total_hrs = Math.round(raw_dur * raw_hrs);
+  const ahr = hrs_per_week * 52;
+  return { raw_dur, raw_hrs, wks, hrs_per_week, total_hrs, ahr };
+}
+
+function w2ContractSummaryText() {
+  const { raw_dur, raw_hrs, total_hrs } = w2ContractParams();
+  const unit = w2Period === 'months' ? 'mo' : 'wks';
+  const hunit = w2Period === 'months' ? 'hrs/mo' : 'hrs/wk';
+  return `${raw_dur} ${unit} × ${raw_hrs} ${hunit} = ${total_hrs.toLocaleString()} hrs`;
+}
+
+function c99ContractSummaryText() {
+  const { raw_dur, raw_hrs, total_hrs } = c99ContractParams();
+  const unit = c99Period === 'months' ? 'mo' : 'wks';
+  const hunit = c99Period === 'months' ? 'hrs/mo' : 'hrs/wk';
+  return `${raw_dur} ${unit} × ${raw_hrs} ${hunit} = ${total_hrs.toLocaleString()} hrs`;
+}
+
+function c99UpdateSummary() {
+  $('c99_contract_summary').textContent = c99ContractSummaryText();
+}
+
+// ── BILL RATE → MARGIN TAB ────────────────────────────────────
+let brPeriod = 'weeks';
+
+function brSetPeriod(p, btn) {
+  brPeriod = p;
+  document.querySelectorAll('#br_period_toggle button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  $('br_duration_label').textContent = p === 'months' ? 'Number of Months' : 'Number of Weeks';
+  $('br_hrs_label').textContent       = p === 'months' ? 'Hours / Month' : 'Hours / Week';
+  brLiveUpdate();
+}
+
+function brContractParams() {
+  const raw_dur = parseInt($('br_wks').value) || (brPeriod === 'months' ? 3 : 13);
+  const raw_hrs = parseFloat($('br_hrs').value) || (brPeriod === 'months' ? 173 : 40);
+  let wks, hrs_per_week;
+  if (brPeriod === 'months') {
+    wks = raw_dur * (52/12);
+    hrs_per_week = raw_hrs / (52/12);
+  } else {
+    wks = raw_dur;
+    hrs_per_week = raw_hrs;
+  }
+  const total_hrs = Math.round(raw_dur * raw_hrs);
+  const ahr = hrs_per_week * 52;
+  return { raw_dur, raw_hrs, wks, hrs_per_week, total_hrs, ahr };
+}
+
+function brTypeChange() {
+  const isW2 = $('br_type').value === 'w2';
+  $('br_pd_section').style.display  = isW2 ? '' : 'none';
+  $('br_ben_section').style.display = isW2 ? '' : 'none';
+  brLiveUpdate();
+}
+
+function syncStateToCalc(targetId, sf) {
+  const stateEl = $(targetId + '_state');
+  if (!stateEl) return;
+  stateEl.value = sf;
+  // Populate cities for that calc
+  const cityEl = $(targetId + '_city');
+  if (!cityEl) return;
+  cityEl.innerHTML = '<option value="">-- Select City --</option>';
+  if (sf) {
+    const cities = [...new Set(
+      customPD.filter(r => r.sf === sf && r.sa !== '--').map(r => r.city)
+    )].sort();
+    cities.forEach(c => {
+      const o = document.createElement('option');
+      o.value = c; o.textContent = c;
+      cityEl.appendChild(o);
+    });
+  }
+}
+
+function syncCityToCalc(targetId, sf, city) {
+  const stateEl = $(targetId + '_state');
+  const cityEl = $(targetId + '_city');
+  if (!stateEl || !cityEl) return;
+  stateEl.value = sf;
+  cityEl.innerHTML = '<option value="">-- Select City --</option>';
+  if (sf) {
+    const cities = [...new Set(
+      customPD.filter(r => r.sf === sf && r.sa !== '--').map(r => r.city)
+    )].sort();
+    cities.forEach(c => {
+      const o = document.createElement('option');
+      o.value = c; o.textContent = c;
+      cityEl.appendChild(o);
+    });
+    if (city) cityEl.value = city;
+  }
+}
+
+function brStateChange() {
+  const sf = $('br_state').value;
+  const cityEl = $('br_city');
+  cityEl.innerHTML = '<option value="">-- Select City --</option>';
+  if (sf) {
+    const cities = customPD.filter(r => r.sf === sf).sort((a,b) => a.city.localeCompare(b.city));
+    cities.forEach(r => {
+      const o = document.createElement('option');
+      o.value = r.city; o.textContent = r.city + (r.county ? ` (${r.county})` : '');
+      cityEl.appendChild(o);
+    });
+    // Sync state to W2 and 1099 calculators
+    syncStateToCalc('w2', sf);
+    syncStateToCalc('c99', sf);
+  }
+  brLiveUpdate();
+}
+
+function brCityChangeSync() {
+  const sf = $('br_state').value;
+  const city = $('br_city').value;
+  if (sf && city) {
+    syncCityToCalc('w2', sf, city);
+    syncCityToCalc('c99', sf, city);
+    // Trigger update on W2 and 1099 if they have city handlers
+    if (typeof w2CityChange === 'function') w2CityChange();
+  }
+  brLiveUpdate();
+}
+
+function brCalcCosts() {
+  const isW2  = $('br_type').value === 'w2';
+  const pay   = parseFloat($('br_pay').value) || 0;
+  const et    = parseFloat($('br_et').value) / 100 || 0.12;
+  const bill  = parseFloat($('br_bill').value) || 0;
+  const vms_pct = parseFloat($('br_vms_pct').value) || 0;
+  const actual_rate = bill * (1 - vms_pct / 100);  // what you actually receive after VMS fee
+  const { hrs_per_week, raw_dur, total_hrs, ahr } = brContractParams();
+  const hrs   = hrs_per_week;
+
+  let pd_hr = 0, pd_day = 0, lo = 0, me = 0;
+  let use_pd = false;
+
+  if (isW2 && $('br_use_pd').checked) {
+    const sf = $('br_state').value;
+    const city = $('br_city').value;
+    let pdRow = null;
+    if (sf && city) pdRow = customPD.find(r => r.sf === sf && r.city === city);
+    if (pdRow) {
+      lo = pdRow.lodging; me = pdRow.meals;
+      pd_day = lo + me;
+      const pdd = parseInt($('br_pdd').value) || 7;
+      const pd_pct_factor = (settings.pd_pct !== undefined ? settings.pd_pct : 100) / 100;
+      pd_hr = (pd_day * pdd / Math.max(1, hrs)) * pd_pct_factor;
+      use_pd = pd_hr > 0;
+    }
+  }
+
+  const tb = use_pd ? Math.max(0, pay - pd_hr) : pay;
+  const et_hr = isW2 && settings.include_w2_tax ? tb * et : 0;
+
+  let hi_hr=0, vc_hr=0, ho_hr=0, sk_hr=0, k4_hr=0, benefits_hr=0;
+  let custom_hr = 0;
+  const custom_detail = [];
+  if (isW2) {
+    if ($('br_use_hi').checked)   hi_hr = (settings.health_insurance * 12) / ahr;
+    if ($('br_use_vac').checked)  vc_hr = (settings.vacation_days * 8 * pay) / ahr;
+    if ($('br_use_hol').checked)  ho_hr = (settings.holiday_days * 8 * pay) / ahr;
+    if ($('br_use_sick').checked) sk_hr = (settings.sick_days * 8 * pay) / ahr;
+    if ($('br_use_401k').checked) {
+      const sel = document.querySelector('input[name="br_k401c"]:checked');
+      const pct = sel ? parseFloat(sel.value)/100 : 0.06;
+      k4_hr = pay * pct;
+    }
+    // Custom benefits
+    customBenefits.forEach(b => {
+      const chk = $('br_cb_chk_' + b.id);
+      if (chk && chk.checked) {
+        const hr = cbHrCost(b, pay, ahr);
+        custom_hr += hr;
+        custom_detail.push({ name: b.name, hr });
+      }
+    });
+    benefits_hr = hi_hr + vc_hr + ho_hr + sk_hr + k4_hr + custom_hr;
+  }
+
+  const tot_hr = use_pd
+    ? tb + et_hr + benefits_hr + pd_hr
+    : pay + et_hr + benefits_hr;
+
+  const margin_hr  = actual_rate - tot_hr;
+  const margin_pct = actual_rate > 0 ? (margin_hr / actual_rate) * 100 : 0;
+
+  return {
+    bill, vms_pct, actual_rate, pay, tb, et_hr, et_pct: et*100, benefits_hr,
+    hi_hr, vc_hr, ho_hr, sk_hr, k4_hr, custom_hr, custom_detail,
+    pd_hr, pd_day, lo, me, use_pd,
+    tot_hr, margin_hr, margin_pct,
+    total_hrs, raw_dur, ahr, hrs,
+    isW2
+  };
+}
+
+function brLiveUpdate() {
+  // Update contract summary chip
+  const { raw_dur, raw_hrs, total_hrs } = brContractParams();
+  const unit  = brPeriod === 'months' ? 'mo' : 'wks';
+  const hunit = brPeriod === 'months' ? 'hrs/mo' : 'hrs/wk';
+  $('br_contract_summary').textContent = `${raw_dur} ${unit} × ${raw_hrs} ${hunit} = ${total_hrs.toLocaleString()} hrs`;
+
+  try {
+    const c = brCalcCosts();
+
+    // Update PD display
+    if (c.use_pd) {
+      const pdd = parseInt($('br_pdd').value) || 7;
+      const weekly_pd = c.pd_day * pdd;
+      $('br_lo_d').textContent = '$' + c.lo;
+      $('br_me_d').textContent = '$' + c.me;
+      $('br_to_d').textContent = '$' + c.pd_day;
+      $('br_pw_d').textContent = fmtd(weekly_pd);
+      $('br_ph_d').textContent = fmtd(c.pd_hr);
+      $('br_pd_tb_note').textContent = `Taxable Base = $${c.pay.toFixed(2)} − ${fmtd(c.pd_hr)} (PD/hr) = ${fmtd(c.tb)}/hr`;
+    } else {
+      $('br_pw_d').textContent = '--';
+      $('br_ph_d').textContent = '--';
+      $('br_pd_tb_note').textContent = 'Per Diem not applied';
+    }
+
+    // Taxable base note
+    const isW2 = $('br_type').value === 'w2';
+    $('br_tb_note').textContent = isW2
+      ? (c.use_pd
+          ? `Taxable Base = ${fmtd(c.pay)} − ${fmtd(c.pd_hr)} (PD) = ${fmtd(c.tb)}/hr  |  W2 tax ${c.et_pct}% on ${fmtd(c.tb)}`
+          : `Taxable Base = ${fmtd(c.pay)}/hr  |  W2 tax ${c.et_pct}% on full pay`)
+      : '1099 — No employer tax / benefits burden';
+
+    // Update actual rate display
+    const vms_pct = parseFloat($('br_vms_pct').value) || 0;
+    const actual_rate = c.bill * (1 - vms_pct / 100);
+    $('br_actual_rate').value = fmtd(actual_rate);
+
+    // Live bar
+    const color = c.margin_hr >= 0 ? '#4FE89A' : '#FF7070';
+    $('br_live_bill_label').textContent = vms_pct > 0 ? 'Bill → Actual Rate' : 'Bill Rate';
+    $('br_live_bill').textContent   = vms_pct > 0 ? `${fmtd(c.bill)} → ${fmtd(actual_rate)}` : fmtd(c.bill);
+    $('br_live_cost').textContent   = fmtd(c.tot_hr);
+    $('br_live_margin').textContent = fmtd(c.margin_hr);
+    $('br_live_margin').style.color = color;
+    $('br_live_pct').textContent    = c.margin_pct.toFixed(1) + '%';
+    $('br_live_pct').style.color    = color;
+    $('br_live_total').textContent  = fmtd(c.margin_hr * c.total_hrs);
+  } catch(e) {}
+}
+
+function calcBR() {
+  const c = brCalcCosts();
+  const bill = c.bill;
+  if (!bill || bill <= 0) { toast('Enter a valid client bill rate', 'error'); return; }
+
+  const { raw_dur, raw_hrs, total_hrs, hrs_per_week } = brContractParams();
+  const pdd = parseInt($('br_pdd').value) || 7;
+  const loc = ($('br_state').value && $('br_city').value)
+    ? `${$('br_city').value}, ${$('br_state').value}` : '--';
+
+  const color = c.margin_hr >= 0 ? 'var(--grn)' : 'var(--red)';
+  const pctColor = c.margin_pct >= 15 ? 'var(--grn)' : c.margin_pct >= 8 ? 'var(--gold)' : 'var(--red)';
+  const signal   = c.margin_pct >= 15 ? '✅ Healthy' : c.margin_pct >= 8 ? '⚠️ Thin' : '🚨 Below Target';
+
+  const periodStr = brPeriod === 'months'
+    ? `${raw_dur} month${raw_dur>1?'s':''} × ${raw_hrs} hrs/mo`
+    : `${raw_dur} week${raw_dur>1?'s':''} × ${raw_hrs} hrs/wk`;
+
+  // Build cost waterfall rows
+  const mkRow = (label, val, cls='', sub=false, indent=false) => {
+    if (val === 0 && indent) return '';
+    const style = sub ? 'color:var(--mut);font-size:12px' : '';
+    return `<div class="cost-row" style="${style}${indent?'padding-left:22px':''}">
+      <span class="cr-label">${label}</span>
+      <span class="cr-val ${cls}">${fmtd(val)}/hr</span>
+    </div>`;
+  };
+
+  let costsHTML = `
+    ${mkRow('Pay Rate', c.pay, 'acc')}
+    ${c.isW2 && c.use_pd ? mkRow('← Per Diem Deduction', -c.pd_hr, 'mut', true, true) : ''}
+    ${c.isW2 && c.use_pd ? mkRow('= Taxable Base', c.tb, 'mut', true, true) : ''}
+    ${c.isW2 ? mkRow(`W2 Employer Tax (${c.et_pct.toFixed(1)}%)`, c.et_hr, 'orn', false, true) : ''}
+    ${c.isW2 && c.hi_hr > 0  ? mkRow('Health Insurance',  c.hi_hr,  'mut', false, true) : ''}
+    ${c.isW2 && c.vc_hr > 0  ? mkRow('Paid Vacation',     c.vc_hr,  'mut', false, true) : ''}
+    ${c.isW2 && c.ho_hr > 0  ? mkRow('Public Holidays',   c.ho_hr,  'mut', false, true) : ''}
+    ${c.isW2 && c.sk_hr > 0  ? mkRow('Sick Leave',        c.sk_hr,  'mut', false, true) : ''}
+    ${c.isW2 && c.k4_hr > 0  ? mkRow('401(k) Match',      c.k4_hr,  'mut', false, true) : ''}
+    ${c.isW2 ? c.custom_detail.map(d => mkRow(d.name, d.hr, 'mut', false, true)).join('') : ''}
+    ${c.isW2 && c.use_pd     ? mkRow('+ Per Diem Pass-through', c.pd_hr, 'hdr2') : ''}
+  `;
+
+  $('br_results').innerHTML = `
+    <div class="result-header" style="background:linear-gradient(135deg,var(--grn),#145A32)">CLIENT RATE ANALYSIS RESULTS</div>
+    <div class="results-grid">
+
+      <!-- Waterfall breakdown -->
+      <div class="result-card">
+        <div class="result-card-title">Cost Waterfall (per hour)</div>
+        ${costsHTML}
+        <div class="cost-row" style="border-top:2px solid var(--bdr);margin-top:4px;padding-top:6px">
+          <span class="cr-label" style="font-weight:700">TOTAL COST/hr</span>
+          <span class="cr-val orn" style="font-weight:800">${fmtd(c.tot_hr)}/hr</span>
+        </div>
+        <div class="cost-row" style="background:var(--ltbl);border-radius:6px;margin-top:6px;padding:8px 12px">
+          <span class="cr-label" style="font-weight:700;color:var(--grn)">Client Bill Rate</span>
+          <span class="cr-val" style="font-weight:800;color:var(--grn)">${fmtd(c.bill)}/hr</span>
+        </div>
+        ${c.vms_pct > 0 ? `<div class="cost-row" style="background:var(--ltor);border-radius:6px;margin-top:2px;padding:8px 12px">
+          <span class="cr-label" style="font-weight:600;color:var(--orn)">VMS Fee (${c.vms_pct.toFixed(1)}%)</span>
+          <span class="cr-val" style="font-weight:700;color:var(--orn)">− ${fmtd(c.bill * c.vms_pct / 100)}/hr</span>
+        </div>
+        <div class="cost-row" style="background:var(--ltgn);border-radius:6px;margin-top:2px;padding:8px 12px;border:1px solid #aee4c0">
+          <span class="cr-label" style="font-weight:700;color:var(--grn2)">Actual Rate from Client</span>
+          <span class="cr-val" style="font-weight:800;color:var(--grn2)">${fmtd(c.actual_rate)}/hr</span>
+        </div>` : ''}
+        <div class="cost-row" style="background:${c.margin_hr>=0?'var(--ltgn)':'#FDE8E8'};border-radius:6px;margin-top:4px;padding:10px 12px;border:2px solid ${c.margin_hr>=0?'var(--grn2)':'var(--red)'}">
+          <span class="cr-label" style="font-size:14px;font-weight:800;color:${color}">YOUR MARGIN/hr</span>
+          <span class="cr-val" style="font-size:16px;font-weight:900;color:${color}">${fmtd(c.margin_hr)}/hr</span>
+        </div>
+        ${c.isW2 && c.use_pd ? `<div class="pd-detail-box">
+          <strong>Per Diem — ${loc}</strong>
+          $${c.lo}/night + $${c.me}/day = $${c.pd_day}/day &nbsp;|&nbsp; ${pdd} days/wk
+          ${settings.pd_pct < 100 ? `&nbsp;|&nbsp; <span style="color:var(--orn);font-weight:700">${settings.pd_pct}% coverage</span>` : ''}
+          → ${fmtd(c.pd_hr)}/hr passed through
+        </div>` : ''}
+      </div>
+
+      <!-- Margin summary -->
+      <div class="result-card">
+        <div class="result-card-title">Margin Summary</div>
+
+        <div class="bb-block" style="background:${c.margin_hr>=0?'var(--ltgn)':'#FDE8E8'};border:1px solid ${c.margin_hr>=0?'var(--grn2)':'var(--red)'};border-radius:8px;padding:14px 16px;margin-bottom:12px;text-align:center">
+          <div style="font-size:11px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Margin %</div>
+          <div style="font-size:36px;font-weight:900;color:${pctColor};font-family:var(--mono)">${c.margin_pct.toFixed(2)}%</div>
+          <div style="font-size:13px;font-weight:700;color:${pctColor};margin-top:4px">${signal}</div>
+          <div style="font-size:11px;color:var(--mut);margin-top:4px">= Margin ÷ Bill Rate × 100</div>
+        </div>
+
+        <div class="info-row"><span class="ir-label">Client Bill Rate</span><span class="ir-val grn">${fmtd(c.bill)}/hr</span></div>
+        ${c.vms_pct > 0 ? `<div class="info-row"><span class="ir-label" style="color:var(--orn)">VMS Fee (${c.vms_pct.toFixed(1)}%)</span><span class="ir-val orn">− ${fmtd(c.bill * c.vms_pct / 100)}/hr</span></div>
+        <div class="info-row" style="background:var(--ltgn)"><span class="ir-label" style="font-weight:700;color:var(--grn2)">Actual Rate from Client</span><span class="ir-val" style="color:var(--grn2);font-weight:700">${fmtd(c.actual_rate)}/hr</span></div>` : ''}
+        <div class="info-row"><span class="ir-label">Total Cost/hr</span><span class="ir-val orn">${fmtd(c.tot_hr)}/hr</span></div>
+        <div class="info-row"><span class="ir-label">Margin/hr</span><span class="ir-val" style="color:${color}">${fmtd(c.margin_hr)}/hr</span></div>
+        <div class="info-row"><span class="ir-label">Margin on ${c.vms_pct > 0 ? 'Actual' : 'Bill'} Rate</span><span class="ir-val" style="color:${pctColor};font-weight:700">${c.margin_pct.toFixed(2)}%</span></div>
+        <div class="info-row"><span class="ir-label">Margin on Pay Rate</span><span class="ir-val">${c.pay > 0 ? ((c.margin_hr/c.pay)*100).toFixed(2)+'%' : '--'}</span></div>
+        <div class="info-row" style="background:var(--alt);border-radius:4px"><span class="ir-label">Candidate Pay Rate</span><span class="ir-val acc">${fmtd(c.pay)}/hr</span></div>
+        ${c.isW2 ? `<div class="info-row"><span class="ir-label">W2 Tax Burden</span><span class="ir-val orn">${fmtd(c.et_hr)}/hr</span></div>` : ''}
+        ${c.isW2 ? `<div class="info-row"><span class="ir-label">Benefits Cost</span><span class="ir-val mut">${fmtd(c.benefits_hr - c.k4_hr - c.hi_hr - c.vc_hr - c.ho_hr - c.sk_hr > 0 ? c.benefits_hr : c.hi_hr+c.vc_hr+c.ho_hr+c.sk_hr+c.k4_hr)}/hr</span></div>` : ''}
+        ${c.use_pd ? `<div class="info-row"><span class="ir-label">Per Diem Pass-through</span><span class="ir-val acc">${fmtd(c.pd_hr)}/hr</span></div>` : ''}
+        <hr class="sec-div">
+        <div class="result-card-title">Contract Totals</div>
+        <div class="info-row"><span class="ir-label">Contract Period</span><span class="ir-val drk">${periodStr}</span></div>
+        <div class="info-row"><span class="ir-label">Total Hours</span><span class="ir-val drk">${total_hrs.toLocaleString()} hrs</span></div>
+        <div class="info-row"><span class="ir-label">Total Billed to Client</span><span class="ir-val grn">${fmtd(c.bill * total_hrs)}</span></div>
+        ${c.vms_pct > 0 ? `<div class="info-row"><span class="ir-label" style="color:var(--orn)">VMS Fees (total)</span><span class="ir-val orn">− ${fmtd(c.bill * c.vms_pct / 100 * total_hrs)}</span></div>
+        <div class="info-row" style="background:var(--ltgn)"><span class="ir-label" style="color:var(--grn2);font-weight:700">Net Revenue (after VMS)</span><span class="ir-val" style="color:var(--grn2);font-weight:700">${fmtd(c.actual_rate * total_hrs)}</span></div>` : ''}
+        <div class="info-row"><span class="ir-label">Total Employment Cost</span><span class="ir-val red">${fmtd(c.tot_hr * total_hrs)}</span></div>
+        ${c.use_pd ? `<div class="info-row"><span class="ir-label">Total PD (contract)</span><span class="ir-val acc">${fmtd(c.pd_hr * total_hrs)}</span></div>` : ''}
+        <div class="info-row" style="background:${c.margin_hr>=0?'var(--ltgn)':'#FDE8E8'};border-radius:4px;padding:8px 12px">
+          <span class="ir-label" style="font-weight:800;color:${color}">GROSS PROFIT</span>
+          <span class="ir-val" style="font-weight:900;color:${color};font-size:15px">${fmtd(c.margin_hr * total_hrs)}</span>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Persist as lastResult so Export CSV/PDF/Save capture this BR-tab calculation
+  const candidate_name = $('br_cn') ? $('br_cn').value : '';
+  const job_title = $('br_jt') ? $('br_jt').value : '';
+  const client_name = $('br_cl') ? $('br_cl').value : '';
+  const calc_date = new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
+  const mg_pct = c.margin_pct;
+  const m_hr = c.margin_hr;
+
+  if (c.isW2) {
+    lastResult = {
+      rate_type: 'W2', candidate_name, job_title, client_name, location: loc, calc_date,
+      pay: c.pay, taxable: c.tb, et_hr: c.et_hr, et_pct: c.et_pct, benefits_hr: c.benefits_hr,
+      hi_hr: c.hi_hr, vc_hr: c.vc_hr, ho_hr: c.ho_hr, sk_hr: c.sk_hr, k4_hr: c.k4_hr,
+      custom_hr: c.custom_hr, custom_detail: c.custom_detail,
+      pd_hr: c.pd_hr, pd_day: c.pd_day, tot_hr: c.tot_hr, bill: c.bill, m_hr, mg_pct,
+      thr: total_hrs, use_pd: c.use_pd, lo: c.lo, me: c.me,
+      hrs: hrs_per_week, wks: raw_dur, raw_hrs, raw_dur,
+      period: brPeriod, periodStr,
+      pdd, include_w2_tax: settings.include_w2_tax,
+      pd_pct: settings.pd_pct !== undefined ? settings.pd_pct : 100
+    };
+  } else {
+    lastResult = {
+      rate_type: '1099', candidate_name, job_title, client_name, location: loc, calc_date,
+      pay: c.pay, bill: c.bill, m_hr, mg_pct, thr: total_hrs,
+      raw_dur, raw_hrs, period: brPeriod, periodStr,
+      hrs: raw_hrs, wks: raw_dur
+    };
+  }
+}
+
+function brExportCSV() {
+  try {
+    const c = brCalcCosts();
+    const { total_hrs } = brContractParams();
+    const rows = [
+      ['CLIENT RATE ANALYSIS'],
+      ['Candidate', $('br_cn').value],
+      ['Job Title', $('br_jt').value],
+      ['Client', $('br_cl').value],
+      ['Type', $('br_type').value.toUpperCase()],
+      [''],
+      ['Client Bill Rate/hr', c.bill],
+      ['VMS Fee %', c.vms_pct],
+      ['VMS Deduction/hr', (c.bill * c.vms_pct / 100).toFixed(4)],
+      ['Actual Rate from Client/hr', c.actual_rate],
+      ['Pay Rate/hr', c.pay],
+      ['W2 Tax/hr', c.et_hr],
+      ['Benefits/hr', c.benefits_hr],
+      ['Per Diem/hr', c.pd_hr],
+      ['Total Cost/hr', c.tot_hr],
+      ['Margin/hr', c.margin_hr],
+      ['Margin %', c.margin_pct.toFixed(2) + '%'],
+      [''],
+      ['Total Hours', total_hrs],
+      ['Total Billed to Client', c.bill * total_hrs],
+      ['VMS Fees Total', (c.bill * c.vms_pct / 100 * total_hrs).toFixed(2)],
+      ['Net Revenue (after VMS)', c.actual_rate * total_hrs],
+      ['Total Cost', c.tot_hr * total_hrs],
+      ['Gross Profit', c.margin_hr * total_hrs],
+    ];
+    const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+    const a = document.createElement('a');
+    a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+    a.download = `BillRate_Margin_${$('br_cn').value||'calc'}.csv`;
+    a.click();
+  } catch(e) { toast('Export failed', 'error'); }
+}
+
+// ── W2 TAXABLE BASE NOTE ───────────────────────────────────────
+function w2UpdateTB() {
+  const pay = parseFloat($('w2_pay').value) || 0;
+  const et  = parseFloat($('w2_et').value) || 12;
+  const usePD = $('w2_use_pd').checked;
+  const sf   = $('w2_state').value;
+  const city = $('w2_city').value;
+  const pdd  = parseInt($('w2_pdd').value) || 7;
+  const { hrs_per_week, raw_dur, total_hrs } = w2ContractParams();
+
+  // Update contract summary chip
+  $('w2_contract_summary').textContent = w2ContractSummaryText();
+
+  let pd_hr = 0, pd_day = 0, lo = 0, me = 0;
+  if (usePD) {
+    let pdRow = null;
+    if (sf && city) pdRow = customPD.find(r => r.sf === sf && r.city === city);
+    if (!pdRow && window._overridePD) pdRow = window._overridePD;
+    if (pdRow) {
+      lo = pdRow.lodging; me = pdRow.meals;
+      pd_day = lo + me;
+      const raw_pd_hr_tb = (pd_day * pdd) / Math.max(1, hrs_per_week);
+      const pd_pct_factor_tb = (settings.pd_pct !== undefined ? settings.pd_pct : 100) / 100;
+      pd_hr  = raw_pd_hr_tb * pd_pct_factor_tb;
+      $('w2_ph_d').textContent = fmtd(pd_hr);
+      $('w2_pw_d').textContent = fmtd(pd_day * pdd);
+
+      // Weekly PD summary bar
+      const weekly_pd   = pd_day * pdd;
+      const monthly_pd  = weekly_pd * (52/12);
+      const contract_pd = pd_day * pdd * (w2Period === 'months'
+        ? raw_dur * (52/12)
+        : raw_dur);
+      const periodLabel = w2Period === 'months' ? `Total (${raw_dur} mo)` : `Total (${raw_dur} wks)`;
+
+      $('pw_days').textContent         = pdd + ' days';
+      $('pw_weekly').textContent       = fmtd(weekly_pd);
+      $('pw_period_label').textContent = periodLabel;
+      $('pw_contract').textContent     = fmtd(contract_pd);
+      const pw_m = $('pw_monthly'); if (pw_m) pw_m.textContent = fmtd(monthly_pd);
+      $('w2_pd_weekly_bar').style.display = 'flex';
+    } else {
+      $('w2_pd_weekly_bar').style.display = 'none';
+      $('w2_pw_d').textContent = '--';
+    }
+  } else {
+    $('w2_pd_weekly_bar').style.display = 'none';
+    $('w2_pw_d').textContent = '--';
+  }
+  const tb = usePD && pd_hr > 0 ? Math.max(0, pay - pd_hr) : pay;
+  const note = $('w2_tb_note');
+  if (usePD && pd_hr > 0) {
+    note.textContent = `Taxable Base = $${pay.toFixed(2)} − $${pd_hr.toFixed(4)} (PD/hr) = $${tb.toFixed(4)}/hr | W2 tax ${et}% on $${tb.toFixed(4)} | Benefits on full $${pay.toFixed(2)}`;
+  } else {
+    note.textContent = `Taxable Base = Full Pay Rate $${pay.toFixed(2)}/hr | W2 tax ${et}% on $${pay.toFixed(2)}`;
+  }
+}
+
+// ── CALCULATE W2 ──────────────────────────────────────────────
+function calcW2() {
+  const pay = parseFloat($('w2_pay').value);
+  const mg  = parseFloat($('w2_mg').value) / 100;
+  const et  = parseFloat($('w2_et').value) / 100;
+
+  if (isNaN(pay)||isNaN(mg)||isNaN(et)) {
+    toast('Check numeric fields', 'error'); return;
+  }
+
+  const { raw_dur, raw_hrs, hrs_per_week, total_hrs, ahr } = w2ContractParams();
+  const thr = total_hrs;
+  const hrs = hrs_per_week;
+  const wks = raw_dur;
+  const usePD = $('w2_use_pd').checked;
+
+  const sf   = $('w2_state').value;
+  const city = $('w2_city').value;
+  let pd_hr = 0, pd_day = 0, lo = 0, me = 0;
+
+  if (usePD) {
+    let pdRow = null;
+    if (sf && city) pdRow = customPD.find(r => r.sf === sf && r.city === city);
+    if (!pdRow && window._overridePD) pdRow = window._overridePD;
+    if (pdRow) {
+      lo = pdRow.lodging; me = pdRow.meals;
+      pd_day = lo + me;
+      const raw_pd_hr = (pd_day * (parseInt($('w2_pdd').value)||7)) / Math.max(1, hrs);
+      const pd_pct_factor = (settings.pd_pct !== undefined ? settings.pd_pct : 100) / 100;
+      pd_hr = raw_pd_hr * pd_pct_factor;
+    }
+  }
+  const use_pd = usePD && pd_hr > 0;
+  const tb = use_pd ? Math.max(0, pay - pd_hr) : pay;
+  const et_hr = settings.include_w2_tax ? tb * et : 0;
+
+  // Benefits on FULL pay rate
+  let hi_hr=0, vc_hr=0, ho_hr=0, sk_hr=0, k4_hr=0;
+  if ($('use_hi').checked)   hi_hr = (settings.health_insurance * 12) / ahr;
+  if ($('use_vac').checked)  vc_hr = (settings.vacation_days * 8 * pay) / ahr;
+  if ($('use_hol').checked)  ho_hr = (settings.holiday_days * 8 * pay) / ahr;
+  if ($('use_sick').checked) sk_hr = (settings.sick_days * 8 * pay) / ahr;
+  if ($('use_401k').checked) {
+    const sel = document.querySelector('input[name="k401c"]:checked');
+    const pct = sel ? parseFloat(sel.value)/100 : 0.06;
+    k4_hr = pay * pct;
+  }
+  // Custom benefits
+  let custom_hr = 0;
+  const custom_detail = [];
+  customBenefits.forEach(b => {
+    const chk = $('cb_chk_' + b.id);
+    if (chk && chk.checked) {
+      const hr = cbHrCost(b, pay, ahr);
+      custom_hr += hr;
+      custom_detail.push({ name: b.name, hr });
+    }
+  });
+  const benefits_hr = hi_hr + vc_hr + ho_hr + sk_hr + k4_hr + custom_hr;
+
+  const tot_hr = use_pd
+    ? tb + et_hr + benefits_hr + pd_hr
+    : pay + et_hr + benefits_hr;
+
+  const mb = document.querySelector('input[name="mg_basis"]:checked').value;
+  let bill, m_hr;
+  if (mb === 'base_pay') {
+    // Margin on base pay rate only; then add benefits, W2 tax, and margin
+    m_hr = pay * mg;
+    bill = tot_hr + m_hr;
+  } else if (mb === 'taxable_pd' && use_pd) {
+    const margin_on = tb + pd_hr;
+    m_hr = margin_on * mg;
+    bill = tot_hr + m_hr;
+  } else {
+    bill = tot_hr * (1 + mg);
+    m_hr = bill - tot_hr;
+  }
+
+  const loc = (city && sf) ? `${city}, ${sf}` : '--';
+  const pdd = parseInt($('w2_pdd').value)||7;
+
+  // PD period totals
+  const weekly_pd   = use_pd ? pd_day * pdd : 0;
+  const monthly_pd  = use_pd ? weekly_pd * (52/12) : 0;
+  const contract_pd = use_pd ? pd_day * pdd * (w2Period === 'months'
+    ? raw_dur * (52/12) : raw_dur) : 0;
+
+  // Contract period label for results
+  const periodStr = w2Period === 'months'
+    ? `${raw_dur} month${raw_dur>1?'s':''} × ${raw_hrs} hrs/mo`
+    : `${raw_dur} week${raw_dur>1?'s':''} × ${raw_hrs} hrs/wk`;
+
+  lastResult = {
+    rate_type: 'W2', candidate_name: $('w2_cn').value,
+    job_title: $('w2_jt').value, client_name: $('w2_cl').value,
+    location: loc, calc_date: new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}),
+    pay, taxable: tb, et_hr, et_pct: et*100, benefits_hr,
+    hi_hr, vc_hr, ho_hr, sk_hr, k4_hr, custom_hr, custom_detail, pd_hr, pd_day,
+    tot_hr, bill, m_hr, mg_pct: mg*100, thr, use_pd, lo, me,
+    mb, hrs, wks, raw_hrs, raw_dur,
+    period: w2Period, periodStr,
+    weekly_pd, monthly_pd: 0, contract_pd, pdd,
+    include_w2_tax: settings.include_w2_tax,
+    pd_pct: settings.pd_pct !== undefined ? settings.pd_pct : 100
+  };
+
+  showW2Results();
+}
+
+function showW2Results() {
+  const r = lastResult;
+  const el = $('w2_results');
+  const ud = r.use_pd;
+
+  let costRows = '';
+  const addRow = (label, val, cls='', indent=false) => {
+    if (val === 0 && indent) return '';
+    costRows += `<div class="cost-row">
+      <span class="cost-label${indent?' indent':''}">${label}</span>
+      <span class="cost-val ${cls}">${fmtd(val)}/hr</span>
+    </div>`;
+  };
+
+  if (ud) {
+    addRow('Pay Rate', r.pay, 'acc');
+    addRow('Taxable Base (Pay − PD/hr)', r.taxable, 'acc');
+    addRow('Per Diem Pass-through', r.pd_hr, 'hdr2');
+    if (r.include_w2_tax) {
+      addRow(`W2 Employer Tax (${r.et_pct.toFixed(1)}% on taxable)`, r.et_hr, 'mut');
+    } else {
+      costRows += `<div class="cost-row"><span class="cost-label" style="color:var(--mut)">W2 Employer Tax</span><span class="cost-val mut">excluded</span></div>`;
+    }
+    addRow('Benefits /hr', r.benefits_hr, 'mut');
+    addRow('Health Insurance', r.hi_hr, 'mut', true);
+    addRow('Paid Vacation', r.vc_hr, 'mut', true);
+    addRow('Public Holidays', r.ho_hr, 'mut', true);
+    addRow('Sick Leave', r.sk_hr, 'mut', true);
+    addRow('401(k) Match', r.k4_hr, 'mut', true);
+    if (r.custom_detail && r.custom_detail.length > 0) {
+      r.custom_detail.forEach(c => addRow(c.name, c.hr, 'mut', true));
+    }
+  } else {
+    addRow('Pay Rate (Taxable Base)', r.pay, 'acc');
+    if (r.include_w2_tax) {
+      addRow(`W2 Employer Tax (${r.et_pct.toFixed(1)}% on pay)`, r.et_hr, 'mut');
+    } else {
+      costRows += `<div class="cost-row"><span class="cost-label" style="color:var(--mut)">W2 Employer Tax</span><span class="cost-val mut">excluded</span></div>`;
+    }
+    addRow('Benefits /hr', r.benefits_hr, 'mut');
+    addRow('Health Insurance', r.hi_hr, 'mut', true);
+    addRow('Paid Vacation', r.vc_hr, 'mut', true);
+    addRow('Public Holidays', r.ho_hr, 'mut', true);
+    addRow('Sick Leave', r.sk_hr, 'mut', true);
+    addRow('401(k) Match', r.k4_hr, 'mut', true);
+    if (r.custom_detail && r.custom_detail.length > 0) {
+      r.custom_detail.forEach(c => addRow(c.name, c.hr, 'mut', true));
+    }
+  }
+
+  const mgNote = r.mb === 'base_pay'
+    ? 'Margin on: Base Pay Rate'
+    : (r.mb === 'taxable_pd' && ud)
+      ? 'Margin on: Taxable Base + PD Passthrough'
+      : 'Margin on: Total Cost/hr';
+
+  const pdDetail = (ud && r.pd_hr > 0) ? `
+    <div class="pd-detail-box">
+      <strong>Per Diem Detail — ${r.location}</strong>
+      $${r.lo}/night + $${r.me}/day = $${r.pd_day}/day &nbsp;|&nbsp; ${r.pdd} days/wk
+      ${r.pd_pct < 100 ? `&nbsp;|&nbsp; <span style="color:var(--orn);font-weight:700">Coverage: ${r.pd_pct}% of GSA rate</span>` : ''}
+      &nbsp;|&nbsp; ${fmtd(r.pd_hr)}/hr passed through<br>
+      <span style="color:var(--hdr2);font-weight:600">
+        Weekly PD: ${fmtd(r.weekly_pd)} &nbsp;•&nbsp;
+        Contract PD Total: ${fmtd(r.contract_pd)}
+        ${r.pd_pct < 100 ? `&nbsp;•&nbsp; <span style="color:var(--mut)">Full GSA rate would be ${fmtd(r.pd_day * r.pdd / r.hrs)}/hr</span>` : ''}
+      </span>
+    </div>` : '';
+
+  el.innerHTML = `
+    <div class="result-header">W2 RATE CALCULATION RESULTS</div>
+    <div class="results-grid">
+      <div class="result-card">
+        <div class="result-card-title">W2 Cost Breakdown (per hour)</div>
+        ${costRows}
+        <div class="total-row">
+          <span class="t-label">TOTAL COST/hr</span>
+          <span class="t-val">${fmtd(r.tot_hr)}/hr</span>
+        </div>
+        <div class="margin-note">${mgNote}</div>
+        ${pdDetail}
+      </div>
+      <div class="result-card">
+        <div class="result-card-title">Bill Rate &amp; Margin</div>
+        <div class="info-row"><span class="ir-label">Pay Rate</span><span class="ir-val drk">${fmtd(r.pay)}/hr</span></div>
+        <div class="info-row"><span class="ir-label">Taxable Base</span><span class="ir-val acc">${fmtd(r.taxable)}/hr</span></div>
+        <div class="info-row"><span class="ir-label">Total Cost/hr</span><span class="ir-val orn">${fmtd(r.tot_hr)}/hr</span></div>
+        <div class="info-row"><span class="ir-label">Margin %</span><span class="ir-val grn">${fmtp(r.mg_pct)}</span></div>
+        <div class="info-row"><span class="ir-label">Margin $/hr</span><span class="ir-val grn">${fmtd(r.m_hr)}/hr</span></div>
+        <div class="bill-box">
+          <div class="bb-title">Total Bill Rate (W2)</div>
+          <div class="bb-rate">${fmtd(r.bill)}/hr</div>
+          <div class="bb-sub">Margin/hr: ${fmtd(r.m_hr)} &nbsp;|&nbsp; Contract: ${fmtd(r.m_hr * r.thr)}</div>
+        </div>
+        <hr class="sec-div">
+        <div class="result-card-title">Contract Summary</div>
+        <div class="info-row"><span class="ir-label">Contract Period</span><span class="ir-val drk">${r.periodStr}</span></div>
+        <div class="info-row"><span class="ir-label">Total Contract Hours</span><span class="ir-val drk">${r.thr.toLocaleString()} hrs</span></div>
+        <div class="info-row"><span class="ir-label">Total Bill to Client</span><span class="ir-val grn">${fmtd(r.bill * r.thr)}</span></div>
+        <div class="info-row"><span class="ir-label">Employment Cost</span><span class="ir-val red">${fmtd(r.tot_hr * r.thr)}</span></div>
+        ${r.use_pd ? `<div class="info-row"><span class="ir-label">Total PD (contract)</span><span class="ir-val acc">${fmtd(r.contract_pd)}</span></div>` : ''}
+        <div class="info-row"><span class="ir-label">Gross Margin</span><span class="ir-val grn">${fmtd(r.m_hr * r.thr)}</span></div>
+        <div class="info-row"><span class="ir-label">Gross Margin %</span><span class="ir-val grn">${fmtp(r.mg_pct)}</span></div>
+      </div>
+    </div>`;
+}
+
+// ── CALCULATE 1099 ─────────────────────────────────────────────
+function calc1099() {
+  const pay = parseFloat($('c99_pay').value);
+  const mg  = parseFloat($('c99_mg').value) / 100;
+
+  if (isNaN(pay)||isNaN(mg)) {
+    toast('Check numeric fields', 'error'); return;
+  }
+  const { raw_dur, raw_hrs, total_hrs } = c99ContractParams();
+  const thr  = total_hrs;
+  const bill = pay * (1 + mg);
+  const m_hr = bill - pay;
+  const loc  = ($('c99_city').value && $('c99_state').value)
+    ? `${$('c99_city').value}, ${$('c99_state').value}` : '--';
+
+  const periodStr = c99Period === 'months'
+    ? `${raw_dur} month${raw_dur>1?'s':''} × ${raw_hrs} hrs/mo`
+    : `${raw_dur} week${raw_dur>1?'s':''} × ${raw_hrs} hrs/wk`;
+
+  lastResult = {
+    rate_type: '1099', candidate_name: $('c99_cn').value,
+    job_title: $('c99_rt').value, client_name: $('c99_cl').value,
+    location: loc, calc_date: new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}),
+    pay, bill, m_hr, mg_pct: mg*100, thr,
+    raw_dur, raw_hrs, period: c99Period, periodStr,
+    hrs: raw_hrs, wks: raw_dur
+  };
+  show1099Results();
+}
+
+function show1099Results() {
+  const r = lastResult;
+  $('c99_results').innerHTML = `
+    <div class="result-header orange">1099 RATE CALCULATION RESULTS</div>
+    <div class="results-grid">
+      <div class="result-card">
+        <div class="result-card-title" style="color:var(--orn)">Rate Summary</div>
+        <div class="info-row"><span class="ir-label">1099 Pay Rate</span><span class="ir-val drk">${fmtd(r.pay)}/hr</span></div>
+        <div class="info-row"><span class="ir-label">Margin %</span><span class="ir-val grn">${fmtp(r.mg_pct)}</span></div>
+        <div class="info-row"><span class="ir-label">Margin $/hr</span><span class="ir-val grn">${fmtd(r.m_hr)}/hr</span></div>
+        <div class="info-row"><span class="ir-label">Employer Tax</span><span class="ir-val grn">$0.00 (none)</span></div>
+        <div class="info-row"><span class="ir-label">Benefits</span><span class="ir-val grn">$0.00 (none)</span></div>
+        <div class="info-row"><span class="ir-label">Est. W2 Tax Savings</span><span class="ir-val grn">~${fmtd(r.pay*0.12)}/hr</span></div>
+      </div>
+      <div class="result-card">
+        <div class="result-card-title" style="color:var(--orn)">Bill Rate</div>
+        <div class="bill-box orange">
+          <div class="bb-title">Total Bill Rate (1099)</div>
+          <div class="bb-rate">${fmtd(r.bill)}/hr</div>
+          <div class="bb-sub">Margin/hr: ${fmtd(r.m_hr)}</div>
+        </div>
+        <hr class="sec-div">
+        <div class="result-card-title">Contract Summary</div>
+        <div class="info-row"><span class="ir-label">Contract Period</span><span class="ir-val drk">${r.periodStr}</span></div>
+        <div class="info-row"><span class="ir-label">Total Contract Hours</span><span class="ir-val drk">${r.thr.toLocaleString()} hrs</span></div>
+        <div class="info-row"><span class="ir-label">Pay to Contractor</span><span class="ir-val acc">${fmtd(r.pay * r.thr)}</span></div>
+        <div class="info-row"><span class="ir-label">Total Bill to Client</span><span class="ir-val grn">${fmtd(r.bill * r.thr)}</span></div>
+        <div class="info-row"><span class="ir-label">Gross Margin</span><span class="ir-val grn">${fmtd(r.m_hr * r.thr)}</span></div>
+        <div class="info-row"><span class="ir-label">Gross Margin %</span><span class="ir-val grn">${fmtp(r.mg_pct)}</span></div>
+      </div>
+    </div>`;
+}
+
+// ── SAVE CALC ──────────────────────────────────────────────────
+function saveCalc() {
+  if (!lastResult) { toast('Run a calculation first', 'error'); return; }
+  savedCalcs.unshift({ ...lastResult, saved_at: new Date().toISOString().slice(0,10) });
+  lsSet(LS_SAVED, savedCalcs);
+  toast('Calculation saved!', 'success');
+}
+
+function loadSaved() {
+  const tbody = $('sv_tbody');
+  tbody.innerHTML = '';
+  if (savedCalcs.length === 0) {
+    $('sv_empty').style.display = 'block';
+    $('sv_chk_all').checked = false;
+    updateSvSelBar();
+    return;
+  }
+  $('sv_empty').style.display = 'none';
+  savedCalcs.forEach((r, i) => {
+    const tr = document.createElement('tr');
+    tr.dataset.idx = i;
+    tr.innerHTML = `
+      <td><input type="checkbox" class="sv-chk" onchange="updateSvSelBar()" style="width:14px;height:14px"></td>
+      <td>${r.saved_at}</td>
+      <td>${r.candidate_name||'--'}</td>
+      <td>${r.job_title||'--'}</td>
+      <td>${r.client_name||'--'}</td>
+      <td><strong>${r.rate_type}</strong></td>
+      <td style="font-family:var(--mono)">${fmtd(r.pay)}</td>
+      <td style="font-family:var(--mono);color:var(--grn)">${fmtd(r.bill)}</td>
+      <td style="font-family:var(--mono)">${fmtp(r.mg_pct)}</td>
+      <td>${r.location||'--'}</td>
+      <td><div class="sv-actions">
+        <button onclick="exportPDF(savedCalcs[${i}])" title="Download PDF">📄 PDF</button>
+        <button onclick="exportExcel(savedCalcs[${i}])" title="Download Excel">📊 Excel</button>
+        <button class="btn btn-red btn-sm" style="padding:3px 8px;font-size:11px" onclick="deleteSavedRow(${i})">🗑</button>
+      </div></td>`;
+    tbody.appendChild(tr);
+  });
+  $('sv_chk_all').checked = false;
+  updateSvSelBar();
+}
+
+function updateSvSelBar() {
+  const chks = document.querySelectorAll('.sv-chk');
+  const sel  = document.querySelectorAll('.sv-chk:checked');
+  const btn  = $('sv_del_sel_btn');
+  const cnt  = $('sv_sel_count');
+  if (sel.length > 0) {
+    btn.style.display = 'flex';
+    cnt.textContent = `${sel.length} selected`;
+  } else {
+    btn.style.display = 'none';
+    cnt.textContent = '';
+  }
+}
+
+function toggleAllSaved(cb) {
+  document.querySelectorAll('.sv-chk').forEach(c => c.checked = cb.checked);
+  updateSvSelBar();
+}
+
+function deleteSavedRow(idx) {
+  if (!confirm(`Delete this calculation for "${savedCalcs[idx].candidate_name||'--'}"?`)) return;
+  savedCalcs.splice(idx, 1);
+  lsSet(LS_SAVED, savedCalcs);
+  loadSaved();
+  toast('Deleted', 'success');
+}
+
+function deleteSelectedSaved() {
+  const rows = document.querySelectorAll('#sv_tbody tr');
+  const toDelete = [];
+  rows.forEach(tr => {
+    const chk = tr.querySelector('.sv-chk');
+    if (chk && chk.checked) toDelete.push(parseInt(tr.dataset.idx));
+  });
+  if (toDelete.length === 0) return;
+  if (!confirm(`Delete ${toDelete.length} selected calculation(s)?`)) return;
+  toDelete.sort((a,b) => b-a).forEach(i => savedCalcs.splice(i,1));
+  lsSet(LS_SAVED, savedCalcs);
+  loadSaved();
+  toast(`Deleted ${toDelete.length} calculation(s)`, 'success');
+}
+
+function clearSaved() {
+  if (!confirm('Delete all saved calculations?')) return;
+  savedCalcs = [];
+  lsSet(LS_SAVED, savedCalcs);
+  loadSaved();
+  toast('Cleared all saved calculations');
+}
+
+// ── EXPORT CSV ─────────────────────────────────────────────────
+function exportCSV() {
+  if (!lastResult) { toast('Run a calculation first', 'error'); return; }
+  const r = lastResult;
+  let rows = [['US Tax - Rate Calculator'], ['']];
+  rows.push(['Field','Value']);
+  rows.push(['Calculation Date', r.calc_date]);
+  rows.push(['Type', r.rate_type]);
+  rows.push(['Candidate', r.candidate_name||'--']);
+  rows.push(['Job Title', r.job_title||'--']);
+  rows.push(['Client', r.client_name||'--']);
+  rows.push(['Location', r.location||'--']);
+  rows.push(['']);
+
+  if (r.rate_type === 'W2') {
+    rows.push(['PAY RATE','']);
+    rows.push(['Pay Rate /hr', r.pay]);
+    rows.push(['Taxable Base /hr', r.taxable]);
+    rows.push(['Per Diem /hr', r.pd_hr]);
+    rows.push(['W2 Employer Tax /hr', r.et_hr]);
+    rows.push(['Benefits /hr', r.benefits_hr]);
+    rows.push(['  Health Insurance /hr', r.hi_hr]);
+    rows.push(['  Vacation /hr', r.vc_hr]);
+    rows.push(['  Holidays /hr', r.ho_hr]);
+    rows.push(['  Sick Leave /hr', r.sk_hr]);
+    rows.push(['  401k Match /hr', r.k4_hr]);
+    (r.custom_detail||[]).forEach(d => rows.push(['  ' + d.name + ' /hr', d.hr]));
+    rows.push(['TOTAL COST /hr', r.tot_hr]);
+    rows.push(['Margin %', r.mg_pct]);
+    rows.push(['Margin /hr', r.m_hr]);
+    rows.push(['BILL RATE /hr', r.bill]);
+    rows.push(['']);
+    rows.push(['CONTRACT SUMMARY','']);
+    rows.push(['Contract Hours', r.thr]);
+    rows.push(['Total Bill to Client', r.bill * r.thr]);
+    rows.push(['Employment Cost', r.tot_hr * r.thr]);
+    rows.push(['Gross Margin', r.m_hr * r.thr]);
+  } else {
+    rows.push(['1099 Pay Rate /hr', r.pay]);
+    rows.push(['Margin %', r.mg_pct]);
+    rows.push(['Margin /hr', r.m_hr]);
+    rows.push(['BILL RATE /hr', r.bill]);
+    rows.push(['Contract Hours', r.thr]);
+    rows.push(['Total Pay to Contractor', r.pay * r.thr]);
+    rows.push(['Total Bill to Client', r.bill * r.thr]);
+    rows.push(['Gross Margin', r.m_hr * r.thr]);
+  }
+
+  const csv = rows.map(row => row.map(v =>
+    typeof v === 'number' ? v.toFixed(2) : `"${v}"`
+  ).join(',')).join('\n');
+
+  const blob = new Blob([csv], {type:'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  const name = (r.candidate_name||'Calculation').replace(/\s+/g,'_');
+  a.download = `${name}_${r.rate_type}_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  toast('CSV exported!', 'success');
+}
+
+// ── EXPORT PDF (print-to-PDF via browser) ─────────────────────
+function exportPDF(customResult) {
+  const r = (customResult && typeof customResult === 'object') ? customResult : lastResult;
+  if (!r) { toast('Run a calculation first', 'error'); return; }
+
+  // Build a self-contained print window that mirrors the results UI
+  const isW2 = r.rate_type === 'W2';
+  const fmtdLocal = v => '$' + parseFloat(v).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');
+  const fmtpLocal = v => parseFloat(v).toFixed(2) + '%';
+
+  let costRowsHtml = '';
+  const addR = (label, val, cls, indent) => {
+    if (val === 0 && indent) return;
+    costRowsHtml += `<div class="cr${indent?' ind':''}">
+      <span>${label}</span>
+      <span class="${cls||''}">${fmtdLocal(val)}/hr</span>
+    </div>`;
+  };
+
+  if (isW2) {
+    addR('Pay Rate', r.pay, 'acc');
+    if (r.use_pd) {
+      addR('Taxable Base (Pay − PD/hr)', r.taxable, 'acc');
+      addR('Per Diem Pass-through', r.pd_hr, 'blu');
+    }
+    addR(`W2 Employer Tax (${r.et_pct.toFixed(1)}%)`, r.et_hr, 'mut');
+    addR('Benefits /hr', r.benefits_hr, 'mut');
+    addR('Health Insurance', r.hi_hr, 'mut', true);
+    addR('Paid Vacation', r.vc_hr, 'mut', true);
+    addR('Public Holidays', r.ho_hr, 'mut', true);
+    addR('Sick Leave', r.sk_hr, 'mut', true);
+    addR('401(k) Match', r.k4_hr, 'mut', true);
+    (r.custom_detail||[]).forEach(d => addR(d.name, d.hr, 'mut', true));
+  } else {
+    addR('1099 Pay Rate', r.pay, 'acc');
+    addR(`Margin (${r.mg_pct.toFixed(1)}%)`, r.m_hr, 'grn');
+  }
+
+  const pdDetail = (isW2 && r.use_pd && r.pd_hr > 0) ? `
+    <div class="pd-det">
+      <strong>Per Diem:</strong> ${r.location} &nbsp;|&nbsp;
+      $${r.lo}/night + $${r.me}/day = $${r.pd_day}/day
+      ${(r.pd_pct && r.pd_pct < 100) ? `<strong style="color:var(--orn)"> @ ${r.pd_pct}% coverage</strong>` : ''}
+      = ${fmtdLocal(r.pd_hr)}/hr
+    </div>` : '';
+
+  const contractRows = isW2 ? `
+    <div class="cr"><span>Contract Hours</span><span>${r.thr.toLocaleString()} hrs</span></div>
+    <div class="cr"><span>Total Bill to Client</span><span class="grn">${fmtdLocal(r.bill*r.thr)}</span></div>
+    <div class="cr"><span>Employment Cost</span><span class="red">${fmtdLocal(r.tot_hr*r.thr)}</span></div>
+    <div class="cr"><span>Gross Margin</span><span class="grn">${fmtdLocal(r.m_hr*r.thr)}</span></div>
+    <div class="cr"><span>Gross Margin %</span><span class="grn">${fmtpLocal(r.mg_pct)}</span></div>
+  ` : `
+    <div class="cr"><span>Contract Hours</span><span>${r.thr.toLocaleString()} hrs</span></div>
+    <div class="cr"><span>Pay to Contractor</span><span class="acc">${fmtdLocal(r.pay*r.thr)}</span></div>
+    <div class="cr"><span>Total Bill to Client</span><span class="grn">${fmtdLocal(r.bill*r.thr)}</span></div>
+    <div class="cr"><span>Gross Margin</span><span class="grn">${fmtdLocal(r.m_hr*r.thr)}</span></div>
+    <div class="cr"><span>Gross Margin %</span><span class="grn">${fmtpLocal(r.mg_pct)}</span></div>
+  `;
+
+  const accentColor = isW2 ? '#2E6496' : '#C0541A';
+  const billColor   = isW2 ? '#1E8449' : '#C0541A';
+  const typeLabel   = isW2 ? 'W2' : '1099';
+
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>${r.candidate_name||'Calculation'} - ${typeLabel} Rate Calculation</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Fira+Code:wght@500;700&display=swap');
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:'Inter',sans-serif; font-size:12px; color:#1C2833; background:#fff; padding:20px; }
+  .page-hdr { background:#1B3A5C; color:#fff; padding:14px 18px; border-radius:8px; margin-bottom:14px; display:flex; justify-content:space-between; align-items:center; }
+  .page-hdr h1 { font-size:16px; font-weight:700; }
+  .page-hdr .meta { font-size:11px; color:#A8C8EC; text-align:right; line-height:1.5; }
+  .info-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px; }
+  .info-box { background:#F4F8FC; border:1px solid #C8D6E5; border-radius:6px; padding:10px 14px; }
+  .info-box .ib-label { font-size:10px; font-weight:700; color:#7F8C8D; text-transform:uppercase; letter-spacing:0.4px; margin-bottom:2px; }
+  .info-box .ib-val { font-size:13px; font-weight:600; color:#1C2833; }
+  .sec-hdr { background:${accentColor}; color:#fff; padding:7px 12px; font-size:12px; font-weight:700; border-radius:5px 5px 0 0; margin-top:14px; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:14px; }
+  .panel { border:1px solid #C8D6E5; border-radius:6px; overflow:hidden; }
+  .panel-title { background:#EBF5FB; padding:8px 12px; font-size:11px; font-weight:700; color:#2E6496; border-bottom:1px solid #C8D6E5; }
+  .cr { display:flex; justify-content:space-between; padding:5px 12px; font-size:11px; border-bottom:1px solid #f0f4f8; }
+  .cr:nth-child(even) { background:#F4F8FC; }
+  .cr .ind { padding-left:14px; color:#7F8C8D; font-size:10px; }
+  .cr span:last-child { font-family:'Fira Code',monospace; font-size:11px; }
+  .acc { color:#2980B9; } .grn { color:#1E8449; } .red { color:#C0392B; } .mut { color:#7F8C8D; } .blu { color:#2E6496; }
+  .total-row { display:flex; justify-content:space-between; padding:9px 12px; background:#EBF5FB; border-top:2px solid #C8D6E5; font-weight:700; }
+  .total-row span:last-child { font-family:'Fira Code',monospace; font-size:14px; color:#C0392B; }
+  .bill-panel { background:${billColor}; border-radius:6px; padding:16px; text-align:center; margin-top:8px; }
+  .bill-panel .bt { color:rgba(255,255,255,0.85); font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1px; }
+  .bill-panel .bv { color:#fff; font-family:'Fira Code',monospace; font-size:36px; font-weight:700; margin:4px 0; }
+  .bill-panel .bs { color:rgba(255,255,255,0.8); font-size:11px; }
+  .pd-det { background:#EBF5FB; border:1px solid #2980B9; border-radius:4px; padding:6px 10px; margin:6px 10px; font-size:10px; color:#1C2833; }
+  @media print {
+    body { padding:10px; }
+    .no-print { display:none; }
+    .bill-panel { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+    .page-hdr { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+    .sec-hdr { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+    .panel-title { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  }
+</style>
+</head>
+<body>
+<div class="page-hdr">
+  <h1>🧾 US Tax - Rate Calculator</h1>
+  <div class="meta">${typeLabel} Contract &nbsp;|&nbsp; ${r.calc_date}<br>Generated by Rate Calculator</div>
+</div>
+
+<div class="info-grid">
+  <div class="info-box"><div class="ib-label">Candidate</div><div class="ib-val">${r.candidate_name||'--'}</div></div>
+  <div class="info-box"><div class="ib-label">Job Title</div><div class="ib-val">${r.job_title||'--'}</div></div>
+  <div class="info-box"><div class="ib-label">Client / Facility</div><div class="ib-val">${r.client_name||'--'}</div></div>
+  <div class="info-box"><div class="ib-label">Location</div><div class="ib-val">${r.location||'--'}</div></div>
+  <div class="info-box"><div class="ib-label">Contract</div><div class="ib-val">${r.wks} weeks × ${r.hrs} hrs = ${r.thr.toLocaleString()} hrs</div></div>
+  <div class="info-box"><div class="ib-label">Calculation Type</div><div class="ib-val">${typeLabel}</div></div>
+</div>
+
+<div class="grid2">
+  <div class="panel">
+    <div class="panel-title">${typeLabel} Cost Breakdown (per hour)</div>
+    ${costRowsHtml}
+    ${isW2 ? `<div class="total-row"><span>TOTAL COST/hr</span><span>${fmtdLocal(r.tot_hr)}/hr</span></div>` : ''}
+    ${pdDetail}
+  </div>
+  <div>
+    <div class="panel">
+      <div class="panel-title">Bill Rate &amp; Margin</div>
+      <div class="cr"><span>Pay Rate</span><span class="acc">${fmtdLocal(r.pay)}/hr</span></div>
+      ${isW2 ? `<div class="cr"><span>Total Cost/hr</span><span style="color:#C0541A">${fmtdLocal(r.tot_hr)}/hr</span></div>` : ''}
+      <div class="cr"><span>Margin %</span><span class="grn">${fmtpLocal(r.mg_pct)}</span></div>
+      <div class="cr"><span>Margin $/hr</span><span class="grn">${fmtdLocal(r.m_hr)}/hr</span></div>
+    </div>
+    <div class="bill-panel">
+      <div class="bt">Total Bill Rate (${typeLabel})</div>
+      <div class="bv">${fmtdLocal(r.bill)}/hr</div>
+      <div class="bs">Margin/hr: ${fmtdLocal(r.m_hr)} &nbsp;|&nbsp; Contract: ${fmtdLocal(r.m_hr*r.thr)}</div>
+    </div>
+    <div class="panel" style="margin-top:10px">
+      <div class="panel-title">Contract Summary</div>
+      ${contractRows}
+    </div>
+  </div>
+</div>
+
+<div class="no-print" style="margin-top:20px;text-align:center">
+  <button onclick="window.print()" style="background:#1B3A5C;color:#fff;border:none;padding:10px 28px;border-radius:7px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">
+    🖨 Print / Save as PDF
+  </button>
+  &nbsp;
+  <button onclick="window.close()" style="background:#7F8C8D;color:#fff;border:none;padding:10px 18px;border-radius:7px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">
+    ✕ Close
+  </button>
+</div>
+</body>
+</html>`;
+
+  const win = window.open('', '_blank', 'width=900,height=700');
+  if (!win) { toast('Allow popups to use PDF export', 'error'); return; }
+  win.document.write(html);
+  win.document.close();
+}
+
+// ── EXPORT EXCEL (SheetJS) ─────────────────────────────────────
+function exportExcel(customResult) {
+  const r = (customResult && typeof customResult === 'object') ? customResult : lastResult;
+  if (!r) { toast('Run a calculation first', 'error'); return; }
+  if (typeof XLSX === 'undefined') { toast('Excel library failed to load', 'error'); return; }
+
+  const isW2 = r.rate_type === 'W2';
+  const rows = [
+    ['US Tax - Rate Calculator'], [''],
+    ['Field','Value'],
+    ['Calculation Date', r.calc_date],
+    ['Type', r.rate_type],
+    ['Candidate', r.candidate_name||'--'],
+    ['Job Title', r.job_title||'--'],
+    ['Client', r.client_name||'--'],
+    ['Location', r.location||'--'],
+    ['']
+  ];
+
+  if (isW2) {
+    rows.push(['PAY RATE','']);
+    rows.push(['Pay Rate /hr', r.pay]);
+    rows.push(['Taxable Base /hr', r.taxable]);
+    rows.push(['Per Diem /hr', r.pd_hr]);
+    rows.push(['W2 Employer Tax /hr', r.et_hr]);
+    rows.push(['Benefits /hr', r.benefits_hr]);
+    rows.push(['  Health Insurance /hr', r.hi_hr]);
+    rows.push(['  Vacation /hr', r.vc_hr]);
+    rows.push(['  Holidays /hr', r.ho_hr]);
+    rows.push(['  Sick Leave /hr', r.sk_hr]);
+    rows.push(['  401k Match /hr', r.k4_hr]);
+    (r.custom_detail||[]).forEach(d => rows.push(['  ' + d.name + ' /hr', d.hr]));
+    rows.push(['TOTAL COST /hr', r.tot_hr]);
+    rows.push(['Margin %', r.mg_pct]);
+    rows.push(['Margin /hr', r.m_hr]);
+    rows.push(['BILL RATE /hr', r.bill]);
+    rows.push(['']);
+    rows.push(['CONTRACT SUMMARY','']);
+    rows.push(['Contract Hours', r.thr]);
+    rows.push(['Total Bill to Client', r.bill * r.thr]);
+    rows.push(['Employment Cost', r.tot_hr * r.thr]);
+    rows.push(['Gross Margin', r.m_hr * r.thr]);
+  } else {
+    rows.push(['1099 Pay Rate /hr', r.pay]);
+    rows.push(['Margin %', r.mg_pct]);
+    rows.push(['Margin /hr', r.m_hr]);
+    rows.push(['BILL RATE /hr', r.bill]);
+    rows.push(['Contract Hours', r.thr]);
+    rows.push(['Total Pay to Contractor', r.pay * r.thr]);
+    rows.push(['Total Bill to Client', r.bill * r.thr]);
+    rows.push(['Gross Margin', r.m_hr * r.thr]);
+  }
+
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = [{ wch: 28 }, { wch: 18 }];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Rate Calculation');
+  const name = (r.candidate_name||'Calculation').replace(/\s+/g,'_');
+  XLSX.writeFile(wb, `${name}_${r.rate_type}_${new Date().toISOString().slice(0,10)}.xlsx`);
+  toast('Excel exported!', 'success');
+}
+
+// ── PER DIEM MANAGER ──────────────────────────────────────────
+function loadPDTable() {
+  const stFilter = $('pd_fstate').value;
+  const q = ($('pd_search').value || '').toLowerCase().trim();
+
+  // Standard row always first
+  const stdRow = { sa:'--', sf:'Standard CONUS', city:'Standard CONUS', county:'All Counties', lodging:110, meals:68, updated:'CONUS', isStandard:true };
+
+  let rows = customPD.filter(r => {
+    if (r.sa === '--') return false;
+    if (stFilter && r.sf !== stFilter) return false;
+    if (q && !`${r.sa}${r.sf}${r.city}${r.county}`.toLowerCase().includes(q)) return false;
+    return true;
+  });
+
+  // Sort non-standard rows
+  rows.sort((a, b) => {
+    let av, bv;
+    switch(pdSortCol) {
+      case 'st':      av = a.sa;      bv = b.sa;      break;
+      case 'state':   av = a.sf;      bv = b.sf;      break;
+      case 'city':    av = a.city;    bv = b.city;    break;
+      case 'lodging': av = a.lodging; bv = b.lodging; break;
+      case 'meals':   av = a.meals;   bv = b.meals;   break;
+      case 'total':   av = a.lodging+a.meals; bv = b.lodging+b.meals; break;
+      default:        av = a.sf;      bv = b.sf;
+    }
+    if (av < bv) return -1 * pdSortDir;
+    if (av > bv) return 1 * pdSortDir;
+    return 0;
+  });
+
+  // Standard row always at top (only when no state filter and no search)
+  const displayRows = (!stFilter && !q) ? [stdRow, ...rows] : rows;
+
+  const tbody = $('pd_tbody');
+  tbody.innerHTML = '';
+  displayRows.forEach((r) => {
+    const tr = document.createElement('tr');
+    if (r.isStandard) tr.classList.add('standard-row');
+    const updated = r.isStandard ? 'CONUS Default' : (r.updated||'--');
+    tr.innerHTML = `
+      <td><strong>${r.sa}</strong></td>
+      <td>${r.sf}</td>
+      <td>${r.city}</td>
+      <td style="color:var(--mut)">${r.county}</td>
+      <td style="font-family:var(--mono);color:var(--acc)">$${r.lodging}</td>
+      <td style="font-family:var(--mono)">$${r.meals}</td>
+      <td style="font-family:var(--mono);font-weight:700">$${r.lodging+r.meals}</td>
+      <td style="color:var(--mut)">${updated}</td>
+      <td><button class="btn-use-pd" onclick="usePDRow(event,'${r.sf}','${r.city}',${r.lodging},${r.meals})">Use ▶</button></td>`;
+    if (!r.isStandard) {
+      tr.onclick = (e) => {
+        if (e.target.classList.contains('btn-use-pd')) return;
+        document.querySelectorAll('#pd_tbody tr').forEach(t => t.classList.remove('selected'));
+        tr.classList.add('selected');
+        $('pde_sa').value = r.sa;
+        $('pde_sf').value = r.sf;
+        $('pde_ci').value = r.city;
+        $('pde_co').value = r.county;
+        $('pde_lo').value = r.lodging;
+        $('pde_me').value = r.meals;
+      };
+    } else {
+      // Standard row click just fills edit fields
+      tr.onclick = (e) => {
+        if (e.target.classList.contains('btn-use-pd')) return;
+        $('pde_sa').value = '--';
+        $('pde_sf').value = 'Standard CONUS';
+        $('pde_ci').value = 'Standard CONUS';
+        $('pde_co').value = 'All Counties';
+        $('pde_lo').value = 110;
+        $('pde_me').value = 68;
+      };
+    }
+    tbody.appendChild(tr);
+  });
+  $('pd_status').textContent = `Showing ${rows.length} cities` + (!stFilter && !q ? ' + Standard CONUS' : '');
+}
+
+function usePDRow(e, sf, city, lodging, meals) {
+  e.stopPropagation();
+
+  const tot = lodging + meals;
+  const hrs = parseInt($('w2_hrs').value) || 40;
+  const pdd = parseInt($('w2_pdd').value) || 7;
+  const phr = (tot * pdd) / Math.max(1, hrs);
+  const weekly_pd = tot * pdd;
+
+  // Always store as override — works for Standard CONUS, custom cities, and GSA cities
+  window._overridePD = { lodging, meals, sf, city };
+
+  // ── Sync to W2 Calculator ──────────────────────────────────
+  $('w2_lo_d').textContent = '$' + lodging;
+  $('w2_me_d').textContent = '$' + meals;
+  $('w2_to_d').textContent = '$' + tot;
+  $('w2_pw_d').textContent = fmtd(weekly_pd);
+  $('w2_ph_d').textContent = fmtd(phr);
+  $('w2_use_pd').checked = true;
+  _syncCalcDropdowns('w2', sf, city);
+  w2UpdateTB();
+
+  // ── Sync to Pay Rate Analyzer (BR) ────────────────────────
+  if ($('br_lo_d')) $('br_lo_d').textContent = '$' + lodging;
+  if ($('br_me_d')) $('br_me_d').textContent = '$' + meals;
+  if ($('br_to_d')) $('br_to_d').textContent = '$' + tot;
+  if ($('br_pw_d')) $('br_pw_d').textContent = fmtd(weekly_pd);
+  if ($('br_use_pd')) $('br_use_pd').checked = true;
+  _syncCalcDropdowns('br', sf, city);
+  if (typeof brLiveUpdate === 'function') brLiveUpdate();
+
+  // ── Sync to 1099 Calculator ───────────────────────────────
+  _syncCalcDropdowns('c99', sf, city);
+
+  toast(`Per diem set: ${city === 'Standard CONUS' ? 'Standard CONUS' : city + ', ' + sf} — $${lodging} + $${meals} = $${tot}/day`, 'success');
+
+  // Stay on Per Diem tab — do NOT switch away
+}
+
+function _syncCalcDropdowns(prefix, sf, city) {
+  const stateEl = $(prefix + '_state');
+  if (!stateEl) return;
+  const matchState = Array.from(stateEl.options).find(o => o.value === sf);
+  if (matchState) {
+    stateEl.value = sf;
+    const cityEl = $(prefix + '_city');
+    if (!cityEl) return;
+    cityEl.innerHTML = '<option value="">-- Select City --</option>';
+    const cities = [...new Set(
+      customPD.filter(r => r.sf === sf && r.sa !== '--').map(r => r.city)
+    )].sort();
+    cities.forEach(c => {
+      const o = document.createElement('option');
+      o.value = c; o.textContent = c;
+      cityEl.appendChild(o);
+    });
+    const matchCity = Array.from(cityEl.options).find(o => o.value === city);
+    if (matchCity) cityEl.value = city;
+  } else {
+    // Standard CONUS or unmatched — clear dropdowns
+    if ($(prefix + '_state')) $(prefix + '_state').value = '';
+    const cityEl = $(prefix + '_city');
+    if (cityEl) cityEl.innerHTML = '<option value="">-- Select City --</option>';
+  }
+}
+
+function pdSort(col) {
+  if (pdSortCol === col) pdSortDir *= -1;
+  else { pdSortCol = col; pdSortDir = 1; }
+  loadPDTable();
+}
+
+function pdSave() {
+  const sa = $('pde_sa').value.trim().toUpperCase();
+  const sf = $('pde_sf').value.trim();
+  const ci = $('pde_ci').value.trim();
+  const co = $('pde_co').value.trim();
+  const lo = parseFloat($('pde_lo').value);
+  const me = parseFloat($('pde_me').value);
+  if (!sa||!sf||!ci||isNaN(lo)||isNaN(me)) { toast('Fill all fields', 'error'); return; }
+  const idx = customPD.findIndex(r => r.sf===sf && r.city===ci);
+  const entry = {sa, sf, city:ci, county:co, lodging:lo, meals:me, updated: new Date().toISOString().slice(0,10)};
+  if (idx >= 0) customPD[idx] = entry;
+  else customPD.push(entry);
+  lsSet(LS_CUSTOM_PD, customPD);
+  // Refresh state dropdowns
+  initDropdowns();
+  loadPDTable();
+  toast(`Saved: ${ci}, ${sf}`, 'success');
+}
+
+function pdDelete() {
+  const sel = document.querySelector('#pd_tbody tr.selected');
+  if (!sel) { toast('Select a row first', 'error'); return; }
+  const city = sel.cells[2].textContent;
+  const sf   = sel.cells[1].textContent;
+  if (sf === 'Standard CONUS') { toast('Cannot delete Standard CONUS row', 'error'); return; }
+  if (!confirm(`Delete ${city}, ${sf}?`)) return;
+  customPD = customPD.filter(r => !(r.sf===sf && r.city===city));
+  lsSet(LS_CUSTOM_PD, customPD);
+  initDropdowns();
+  loadPDTable();
+  toast(`Deleted: ${city}, ${sf}`);
+}
+
+// ── GSA LIVE RATE UPDATE ─────────────────────────────────────
+const LS_GSA_KEY = 'siri_gsa_api_key';
+
+// Called from Per Diem tab "Update Rates per GSA" button
+// If API key is saved, fetch directly. Otherwise prompt once and save it.
+function pdGSAButtonClick() {
+  let apiKey = localStorage.getItem(LS_GSA_KEY);
+  if (!apiKey) {
+    apiKey = prompt('Enter your GSA API key (one-time — get a free key at open.gsa.gov/api/perdiem/):');
+    if (!apiKey) return;
+    apiKey = apiKey.trim();
+    if (!apiKey) return;
+    localStorage.setItem(LS_GSA_KEY, apiKey);
+  }
+  fetchGSARates(apiKey);
+}
+
+function gsaSetStatus(msg, type='') {
+  const el = document.getElementById('gsa_status');
+  if (!el) return;
+  el.textContent = msg;
+  el.className = type ? type : '';
+}
+
+// State abbreviation → full name lookup
+const GSA_STATE_NAMES = {
+  'AL':'Alabama','AK':'Alaska','AZ':'Arizona','AR':'Arkansas','CA':'California',
+  'CO':'Colorado','CT':'Connecticut','DE':'Delaware','FL':'Florida','GA':'Georgia',
+  'HI':'Hawaii','ID':'Idaho','IL':'Illinois','IN':'Indiana','IA':'Iowa',
+  'KS':'Kansas','KY':'Kentucky','LA':'Louisiana','ME':'Maine','MD':'Maryland',
+  'MA':'Massachusetts','MI':'Michigan','MN':'Minnesota','MS':'Mississippi','MO':'Missouri',
+  'MT':'Montana','NE':'Nebraska','NV':'Nevada','NH':'New Hampshire','NJ':'New Jersey',
+  'NM':'New Mexico','NY':'New York','NC':'North Carolina','ND':'North Dakota','OH':'Ohio',
+  'OK':'Oklahoma','OR':'Oregon','PA':'Pennsylvania','RI':'Rhode Island','SC':'South Carolina',
+  'SD':'South Dakota','TN':'Tennessee','TX':'Texas','UT':'Utah','VT':'Vermont',
+  'VA':'Virginia','WA':'Washington','WV':'West Virginia','WI':'Wisconsin','WY':'Wyoming',
+  'DC':'District of Columbia'
+};
+
+// Compute average lodging across all months (skips zero/missing months)
+function gsaAvgLodging(r) {
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const vals = months.map(m => parseFloat(r[m])).filter(v => !isNaN(v) && v > 0);
+  if (!vals.length) return 110;
+  return Math.round(vals.reduce((a,b) => a+b, 0) / vals.length);
+}
+
+async function gsaFetch(url, apiKey, label) {
+  gsaSetStatus(`Downloading ${label}…`);
+  const resp = await fetch(url, { headers: { 'x-api-key': apiKey } });
+  if (resp.status === 403) throw new Error('API key invalid or not authorized. Verify at open.gsa.gov/api/perdiem/');
+  if (resp.status === 429) throw new Error('Rate limit reached (1,000/hr). Please wait a few minutes and try again.');
+  if (!resp.ok)            throw new Error(`GSA API error: HTTP ${resp.status} on ${label}`);
+  return resp.json();
+}
+
+async function fetchGSARates(apiKey) {
+  apiKey = (apiKey || '').trim();
+  const fy = document.getElementById('gsa_fy').value;
+
+  if (!apiKey) { toast('GSA API key required', 'error'); return; }
+
+  const btn = document.getElementById('gsa_update_btn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Fetching…';
+  gsaSetStatus(`Connecting to GSA Per Diem API (FY ${fy})…`);
+
+  let added = 0, updated = 0, skipped = 0;
+
+  try {
+    const baseURL   = 'https://api.gsa.gov/travel/perdiem/v2';
+    const lodgingURL = `${baseURL}/rates/conus/lodging/${fy}?api_key=${apiKey}`;
+    const lodgingData = await gsaFetch(lodgingURL, apiKey, 'lodging rates');
+
+    if (!Array.isArray(lodgingData) || !lodgingData.length) {
+      throw new Error('No lodging data returned. Check fiscal year or API key.');
+    }
+
+    const today = new Date().toISOString().slice(0, 10);
+    gsaSetStatus(`Processing ${lodgingData.length} locations…`);
+
+    for (const r of lodgingData) {
+      try {
+        const stAbbr = (r.State || '').toString().toUpperCase().trim();
+        const city   = (r.City  || '').toString().trim();
+        const county = (r.County|| '').toString().trim();
+        const meals  = parseFloat(r.Meals) || 68;
+
+        if (!city || !stAbbr || city.toLowerCase() === 'standard rate') {
+          skipped++;
+          continue;
+        }
+
+        const lodging   = gsaAvgLodging(r);
+        const stateFull = GSA_STATE_NAMES[stAbbr] || stAbbr;
+
+        const entry = {
+          sa: stAbbr, sf: stateFull,
+          city, county, lodging, meals,
+          updated: today
+        };
+
+        const idx = customPD.findIndex(p =>
+          p.sa === stAbbr && p.city.toLowerCase() === city.toLowerCase()
+        );
+
+        if (idx >= 0) {
+          customPD[idx] = entry;
+          updated++;
+        } else {
+          customPD.push(entry);
+          added++;
+        }
+      } catch(rowErr) {
+        skipped++;
+      }
+    }
+
+    lsSet(LS_CUSTOM_PD, customPD);
+    initDropdowns();
+    loadPDTable();
+
+    gsaSetStatus(`✅ FY ${fy}: +${added} new, ${updated} updated, ${customPD.length} total locations`, 'ok');
+    toast(`GSA FY${fy} rates loaded! +${added} new, ${updated} updated`, 'success');
+
+  } catch(err) {
+    gsaSetStatus(`❌ ${err.message}`, 'err');
+    if (err.message.includes('API key')) {
+      localStorage.removeItem(LS_GSA_KEY);
+    }
+    toast('GSA update failed', 'error');
+    console.error('GSA API fetch error:', err);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '⬇ Update Rates per GSA';
+  }
+}
+
+function pdReseed() {
+  GSA_DATA.forEach(r => {
+    if (r[0] === '--') return;
+    if (!customPD.find(p => p.sf===r[1] && p.city===r[2])) {
+      customPD.push({sa:r[0],sf:r[1],city:r[2],county:r[3],
+        lodging:r[4],meals:r[5],updated:new Date().toISOString().slice(0,10)});
+    }
+  });
+  lsSet(LS_CUSTOM_PD, customPD);
+  initDropdowns();
+  loadPDTable();
+  toast('Re-seeded built-in GSA data', 'success');
+}
+
+// ── SETTINGS ──────────────────────────────────────────────────
+// ── PER DIEM COVERAGE % ──────────────────────────────────────
+function setPDPct(val) {
+  val = Math.max(0, Math.min(100, val));
+  $('st_pd_pct').value = val;
+  $('st_pd_pct_slider').value = val;
+  updatePDPctUI(val);
+  settings.pd_pct = val;
+  lsSet(LS_SETTINGS, settings);
+  brLiveUpdate();
+}
+
+function onPDSlider(val) {
+  $('st_pd_pct').value = val;
+  updatePDPctUI(parseInt(val));
+  settings.pd_pct = parseInt(val) || 0;
+  lsSet(LS_SETTINGS, settings);
+  brLiveUpdate();
+}
+
+function onPDInput(val) {
+  val = Math.max(0, Math.min(100, parseInt(val)||0));
+  $('st_pd_pct_slider').value = val;
+  updatePDPctUI(val);
+  settings.pd_pct = val;
+  lsSet(LS_SETTINGS, settings);
+  brLiveUpdate();
+}
+
+function updatePDPctUI(pct) {
+  // Highlight active preset button
+  [0, 25, 50, 75, 100].forEach(v => {
+    const btn = $('pdp_' + v);
+    if (btn) btn.classList.toggle('active', v === pct);
+  });
+  // Update preview
+  const fullDay   = 178;   // Standard CONUS example
+  const fullHr    = fullDay * 5 / 40;
+  const effDay    = fullDay * pct / 100;
+  const effHr     = effDay * 5 / 40;
+  const heldHr    = fullHr - effHr;
+
+  $('pdp_pct_lbl').textContent  = pct + '%';
+  $('pdp_eff_day').textContent  = '$' + effDay.toFixed(2) + '/day';
+  $('pdp_eff_hr').textContent   = '$' + effHr.toFixed(2) + '/hr';
+
+  const heldRow = $('pdp_withheld_row');
+  if (pct < 100 && pct > 0) {
+    heldRow.style.display = 'inline';
+    $('pdp_withheld').textContent = '$' + heldHr.toFixed(2) + '/hr';
+  } else {
+    heldRow.style.display = 'none';
+  }
+
+  // Update save button label hint
+  const lbl = pct === 100 ? 'Full 100%' : pct === 0 ? 'None (0%)' : pct + '% of GSA rate';
+  $('pdp_100').textContent = pct === 100 ? '✅ Full 100%' : 'Full 100%';
+  $('pdp_0').textContent   = pct === 0   ? '🚫 None (0%)' : 'None (0%)';
+}
+
+// ── INIT BENEFITS UI (replaces old Settings tab init) ─────────
+function initBenefitsUI() {
+  // Sync employer tax field with stored default (still independently editable in-calculator)
+  $('w2_et').value = settings.employer_tax_pct;
+  $('br_et').value = settings.employer_tax_pct;
+  // Refresh all benefit row displays (off by default) for both tabs
+  ['hi','vac','hol','sick','401k'].forEach(key => {
+    refreshBenefitRow('w2', key);
+    refreshBenefitRow('br', key);
+  });
+  setPDPct(settings.pd_pct !== undefined ? settings.pd_pct : 100);
+}
+
+// ── CUSTOM BENEFITS MANAGER ───────────────────────────────────
+function cbCalcTypeLabel(type) {
+  return { flat_month:'$/month', flat_hr:'$/hr', pct_pay:'% of Pay', flat_annual:'$/year' }[type] || type;
+}
+
+function cbHrCost(b, pay, ahr) {
+  switch(b.type) {
+    case 'flat_month':  return (b.amount * 12) / ahr;
+    case 'flat_hr':     return b.amount;
+    case 'pct_pay':     return pay * (b.amount / 100);
+    case 'flat_annual': return b.amount / ahr;
+    default: return 0;
+  }
+}
+
+function cbSave() { lsSet(LS_CUSTOM_BN, customBenefits); }
+
+function cbAmountLabel(b) {
+  return b.type === 'pct_pay'    ? `${b.amount}% of pay` :
+         b.type === 'flat_hr'    ? `$${b.amount}/hr` :
+         b.type === 'flat_month' ? `$${b.amount}/mo` : `$${b.amount}/yr`;
+}
+
+function escHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[c]));
+}
+
+// Render custom benefit checkbox rows into a given tab ('w2' or 'br'),
+// preserving any in-session checked state across re-renders.
+function cbRenderRows(tab) {
+  const container = $(tab === 'br' ? 'br_custom_benefits' : 'w2_custom_benefits');
+  if (!container) return;
+  const prefix = tab === 'br' ? 'br_cb_chk_' : 'cb_chk_';
+
+  // Snapshot currently-checked IDs before rebuilding
+  const checkedIds = new Set();
+  customBenefits.forEach(b => {
+    const el = $(prefix + b.id);
+    if (el && el.checked) checkedIds.add(b.id);
+  });
+
+  if (customBenefits.length === 0) { container.innerHTML = ''; return; }
+
+  let html = '';
+  customBenefits.forEach(b => {
+    const isOn = checkedIds.has(b.id);
+    html += `
+      <div class="benefit-row">
+        <input type="checkbox" id="${prefix}${b.id}" ${isOn ? 'checked' : ''} onchange="customBenefitCheckboxChanged('${tab}',${b.id},this)">
+        <label for="${prefix}${b.id}" style="flex:1;cursor:pointer;min-width:0">${escHtml(b.name)}</label>
+        <span class="note ${isOn ? 'on' : 'off'}" onclick="openCustomBenefitModal('${tab}',${b.id})">${isOn ? cbAmountLabel(b) + ' ✎' : 'Not included — click to add'}</span>
+        <span class="basis">Custom</span>
+        <span class="note-col" style="display:flex;align-items:center;gap:6px">
+          <span>${escHtml(b.note||'')}</span>
+          <button class="cb-del" title="Delete custom benefit" onclick="event.stopPropagation();cbDelete(${b.id})">🗑</button>
+        </span>
+      </div>`;
+  });
+  container.innerHTML = html;
+}
+
+function customBenefitCheckboxChanged(tab, id, cb) {
+  if (cb.checked) {
+    openCustomBenefitModal(tab, id, false);
+  } else {
+    cbRenderRows(tab === 'br' ? 'br' : 'w2');
+    // keep the other tab's checkbox state untouched (independent per tab)
+    if (tab === 'br') brLiveUpdate(); else w2UpdateTB();
+  }
+}
+
+function cbDelete(id) {
+  const b = customBenefits.find(x => x.id === id);
+  if (!b) return;
+  if (!confirm(`Delete custom benefit "${b.name}"?`)) return;
+  customBenefits = customBenefits.filter(x => x.id !== id);
+  cbSave();
+  cbRenderRows('w2');
+  cbRenderRows('br');
+  w2UpdateTB();
+  brLiveUpdate();
+  toast('Deleted', 'success');
+}
+
+// ── BENEFIT CONFIG MODAL ───────────────────────────────────────
+// _bm holds the current modal context: { tab, key } for default benefits,
+// or { tab, customId } for custom benefits (customId null = "add new")
+let _bm = null;
+
+function openBenefitModal(tab, key, forceFreshOn) {
+  const cbEl = $(tab === 'br' ? 'br_use_' + key : 'use_' + key);
+  const wasOn = forceFreshOn === false ? false : (cbEl ? cbEl.checked : false);
+  _bm = { tab, key, custom: false, wasOn };
+  if (cbEl && !wasOn) cbEl.checked = true;
+  const titles = { hi:'Health Insurance', vac:'Paid Vacation', hol:'Public Holidays', sick:'Sick Leave', '401k':'401(k) Match' };
+  $('bn_modal_title').textContent = titles[key] || 'Benefit';
+
+  let body = '';
+  if (key === 'hi') {
+    body = `<label>Employer Contribution ($/month)</label>
+      <input type="number" id="bn_input_val" min="0" step="1" value="${settings.health_insurance}">`;
+  } else if (key === 'vac') {
+    body = `<label>Vacation Days / Year</label>
+      <input type="number" id="bn_input_val" min="0" step="1" value="${settings.vacation_days}">`;
+  } else if (key === 'hol') {
+    body = `<label>Holiday Days / Year</label>
+      <input type="number" id="bn_input_val" min="0" step="1" value="${settings.holiday_days}">`;
+  } else if (key === 'sick') {
+    body = `<label>Sick Days / Year</label>
+      <input type="number" id="bn_input_val" min="0" step="1" value="${settings.sick_days}">`;
+  } else if (key === '401k') {
+    const radioName = tab === 'br' ? 'br_k401c' : 'k401c';
+    const curSel = document.querySelector(`input[name="${radioName}"]:checked`);
+    const curVal = curSel ? parseFloat(curSel.value) : settings.k401_pct;
+    const isPreset = [3,6,9].includes(curVal);
+    body = `<label>Employer 401(k) Match</label>
+      <div class="modal-radio-group">
+        <label class="opt"><input type="radio" name="bn_k401_choice" value="3" ${(!isPreset?false:curVal===3)?'checked':''}> 3%</label>
+        <label class="opt"><input type="radio" name="bn_k401_choice" value="6" ${(!isPreset?true:curVal===6)?'checked':''}> 6%</label>
+        <label class="opt"><input type="radio" name="bn_k401_choice" value="9" ${(!isPreset?false:curVal===9)?'checked':''}> Both (9%)</label>
+        <div class="modal-radio-custom">
+          <label class="opt" style="margin:0"><input type="radio" name="bn_k401_choice" value="custom" ${isPreset?'':'checked'}> Custom %</label>
+          <input type="number" id="bn_k401_custom_val" min="0" max="100" step="0.5" value="${isPreset?6:curVal}">
+        </div>
+      </div>`;
+  }
+  $('bn_modal_body').innerHTML = body;
+  $('bn_modal_overlay').classList.add('show');
+}
+
+function closeBenefitModal(revertCheckbox) {
+  if (revertCheckbox && _bm) {
+    if (!_bm.custom && !_bm.wasOn) {
+      const cb = $(_bm.tab === 'br' ? 'br_use_' + _bm.key : 'use_' + _bm.key);
+      if (cb) cb.checked = false;
+    } else if (_bm.custom && _bm.customId != null && !_bm.wasOn) {
+      // Cancelled while toggling an existing custom benefit on — revert its checkbox
+      const chk = $((_bm.tab === 'br' ? 'br_cb_chk_' : 'cb_chk_') + _bm.customId);
+      if (chk) chk.checked = false;
+    }
+  }
+  $('bn_modal_overlay').classList.remove('show');
+  _bm = null;
+}
+
+function refreshBenefitRow(tab, key) {
+  const prefix = tab === 'br' ? 'br_' : '';
+  const cb = $(prefix + 'use_' + key);
+  const noteEl = $(prefix + (key === '401k' ? 'k401_note' : key + '_note'));
+  if (!cb || !noteEl) return;
+  const on = cb.checked;
+  noteEl.classList.toggle('on', on);
+  noteEl.classList.toggle('off', !on);
+  if (!on) { noteEl.textContent = 'Not included — click to add'; return; }
+  if (key === 'hi')   noteEl.textContent = `$${settings.health_insurance}/month employer ✎`;
+  if (key === 'vac')  noteEl.textContent = `${settings.vacation_days} days/year ✎`;
+  if (key === 'hol')  noteEl.textContent = `${settings.holiday_days} days/year ✎`;
+  if (key === 'sick') noteEl.textContent = `${settings.sick_days} days/year ✎`;
+  if (key === '401k') {
+    const radioName = tab === 'br' ? 'br_k401c' : 'k401c';
+    const sel = document.querySelector(`input[name="${radioName}"]:checked`);
+    const pct = sel ? parseFloat(sel.value) : settings.k401_pct;
+    noteEl.textContent = `${pct}% of annual pay ✎`;
+  }
+}
+
+function onBenefitToggle(tab, key, checkboxEl) {
+  if (checkboxEl.checked) {
+    openBenefitModal(tab, key, false);
+  } else {
+    refreshBenefitRow(tab, key);
+    if (tab === 'br') brLiveUpdate(); else w2UpdateTB();
+  }
+}
+
+function saveBenefitModal() {
+  if (!_bm) return;
+  const { tab, key, custom, customId } = _bm;
+
+  if (!custom) {
+    if (key === 'hi')   settings.health_insurance = parseFloat($('bn_input_val').value) || 0;
+    if (key === 'vac')  settings.vacation_days     = parseInt($('bn_input_val').value) || 0;
+    if (key === 'hol')  settings.holiday_days      = parseInt($('bn_input_val').value) || 0;
+    if (key === 'sick') settings.sick_days         = parseInt($('bn_input_val').value) || 0;
+    if (key === '401k') {
+      const choice = document.querySelector('input[name="bn_k401_choice"]:checked').value;
+      const pct = choice === 'custom' ? (parseFloat($('bn_k401_custom_val').value) || 0) : parseFloat(choice);
+      settings.k401_pct = pct;
+      [{radio:'br_k401c', custom:'br_k401_custom', presetPrefix:'br_k401_'},
+       {radio:'k401c',    custom:'k401_custom',    presetPrefix:'k401_'}].forEach(cfg => {
+        if (choice === 'custom') {
+          const customRadio = $(cfg.custom);
+          if (customRadio) { customRadio.value = pct; customRadio.checked = true; }
+        } else {
+          const presetRadio = $(cfg.presetPrefix + choice);
+          if (presetRadio) presetRadio.checked = true;
+        }
+      });
+    }
+    lsSet(LS_SETTINGS, settings);
+    // Make sure the checkbox is checked (it should already be, since modal only opens on check)
+    const cb = $(tab === 'br' ? 'br_use_' + key : 'use_' + key);
+    if (cb) cb.checked = true;
+    // Mirror to the other tab too since hi/vac/hol/sick/401k share global settings
+    refreshBenefitRow('w2', key);
+    refreshBenefitRow('br', key);
+  } else {
+    const name   = ($('bn_cb_name').value || '').trim();
+    const amount = parseFloat($('bn_cb_amount').value) || 0;
+    const type   = $('bn_cb_type').value;
+    const note   = ($('bn_cb_note').value || '').trim();
+    if (!name) { toast('Enter a benefit name', 'error'); return; }
+    if (customId == null) {
+      const id = Date.now();
+      customBenefits.push({ id, name, amount, type, note, enabled: true });
+      cbSave();
+      cbRenderRows(tab);
+      const chk = $((tab === 'br' ? 'br_cb_chk_' : 'cb_chk_') + id);
+      if (chk) chk.checked = true;
+      cbRenderRows(tab);
+    } else {
+      const b = customBenefits.find(x => x.id === customId);
+      if (b) { b.name = name; b.amount = amount; b.type = type; b.note = note; }
+      cbSave();
+      const chk = $((tab === 'br' ? 'br_cb_chk_' : 'cb_chk_') + customId);
+      if (chk) chk.checked = true;
+      cbRenderRows('w2');
+      cbRenderRows('br');
+    }
+  }
+
+  closeBenefitModal(false);
+  if (tab === 'br') brLiveUpdate(); else w2UpdateTB();
+}
+
+function openCustomBenefitModal(tab, id, forceFreshOn) {
+  let wasOn = false;
+  if (id != null) {
+    const chk = $((tab === 'br' ? 'br_cb_chk_' : 'cb_chk_') + id);
+    wasOn = forceFreshOn === false ? false : (chk ? chk.checked : false);
+    if (chk && !wasOn) chk.checked = true;
+  }
+  _bm = { tab, custom: true, customId: id, wasOn };
+  const b = id == null ? null : customBenefits.find(x => x.id === id);
+  $('bn_modal_title').textContent = id == null ? 'Add Custom Benefit' : 'Edit Custom Benefit';
+  $('bn_modal_body').innerHTML = `
+    <label>Benefit Name</label>
+    <input type="text" id="bn_cb_name" placeholder="e.g. Life Insurance" value="${b ? escHtml(b.name) : ''}">
+    <label>Amount</label>
+    <input type="number" id="bn_cb_amount" min="0" step="0.01" value="${b ? b.amount : ''}">
+    <label>Calc Type</label>
+    <select id="bn_cb_type">
+      ${['flat_month','flat_hr','pct_pay','flat_annual'].map(t =>
+        `<option value="${t}" ${b && b.type===t ? 'selected' : ''}>${cbCalcTypeLabel(t)}</option>`
+      ).join('')}
+    </select>
+    <label>Note / Description</label>
+    <input type="text" id="bn_cb_note" placeholder="Optional description" value="${b ? escHtml(b.note||'') : ''}">`;
+  $('bn_modal_overlay').classList.add('show');
+}
+
+// ── INIT ───────────────────────────────────────────────────────
+initDropdowns();
+loadPDTable();
+initBenefitsUI();
+cbRenderRows('w2');
+cbRenderRows('br');
+w2UpdateTB();
+brLiveUpdate();
+</script>
+</body>
+</html>
